@@ -6,6 +6,7 @@
 
 #include <gst/gst.h>
 #include "vmp-media-factory.h"
+#include "vmp-combined-bin.h"
 
 struct _VMPMediaFactory
 {
