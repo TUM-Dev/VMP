@@ -23,8 +23,17 @@ int main(int argc, char *argv[])
 
     mounts = gst_rtsp_server_get_mount_points(server);
 
+    // Create a dummy pipeline
+    GError *error = NULL;
+    GstElement *element = gst_parse_launch("videotestsrc ! x264enc ! rtph264pay name=pay0 pt=96", &error);
+    if (error)
+    {
+        g_printerr("Failed to parse element: %s\n", error->message);
+        g_error_free(error);
+    }
+
     // Initialise the custom rtsp media factory for managing our own pipeline
-    factory = vmp_media_factory_new();
+    factory = vmp_media_factory_new(element);
 
     // attach the test factory to the /comb url
     gst_rtsp_mount_points_add_factory(mounts, "/comb", GST_RTSP_MEDIA_FACTORY(factory));

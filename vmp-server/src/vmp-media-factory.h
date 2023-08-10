@@ -21,7 +21,12 @@ struct _VMPMediaFactoryClass
     // Additional virtual functions and signals here
 };
 
-VMPMediaFactory *vmp_media_factory_new(void);
+struct _VMPMediaFactory
+{
+    GstRTSPMediaFactory parent;
+};
+
+VMPMediaFactory *vmp_media_factory_new(GstElement *element);
 
 G_END_DECLS
 

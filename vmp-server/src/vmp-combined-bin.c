@@ -46,8 +46,14 @@ static void vmp_combined_bin_finalize(GObject *object);
 static void vmp_combined_bin_init(VMPCombinedBin *self)
 {
     GstBin *bin;
+    // VMPCombinedBinPrivate *priv;
 
+    // priv = vmp_combined_bin_get_instance_private(self);
     bin = GST_BIN(self);
+
+    // Check if source elements are present (TODO: Fail with warning)
+    // g_return_if_fail(GST_IS_ELEMENT(priv->camera_element));
+    // g_return_if_fail(GST_IS_ELEMENT(priv->presentation_element));
 
     // FIXME: Dummy Configuration
     GstElement *videotestsrc = gst_element_factory_make("videotestsrc", "videotestsrc");
@@ -129,6 +135,7 @@ static void vmp_combined_bin_set_property(GObject *object, guint prop_id, const 
 
     switch (prop_id)
     {
+        // FIXME: Dup or Boxed?
     case PROP_OUTPUT_CONFIGURATION:
         priv->output_configuration = g_value_dup_object(value);
         break;
@@ -139,10 +146,10 @@ static void vmp_combined_bin_set_property(GObject *object, guint prop_id, const 
         priv->presentation_configuration = g_value_dup_object(value);
         break;
     case PROP_CAMERA_ELEMENT:
-        vmp_combined_add_camera_element(self, GST_ELEMENT(value));
+        vmp_combined_add_camera_element(self, GST_ELEMENT(g_value_get_object(value)));
         break;
     case PROP_PRESENTATION_ELEMENT:
-        vmp_combined_add_presentation_element(self, GST_ELEMENT(value));
+        vmp_combined_add_presentation_element(self, GST_ELEMENT(g_value_get_object(value)));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -176,8 +183,9 @@ static void vmp_combined_add_camera_element(VMPCombinedBin *bin, GstElement *cam
     // TODO: Print out warning as well
     g_return_if_fail(GST_IS_ELEMENT(camera));
 
-    // TODO: Check if element meets the requirements
-    g_object_unref(priv->camera_element);
+    // Unref previous object when present
+    if (priv->camera_element)
+        g_object_unref(priv->camera_element);
     g_object_ref(camera);
 
     priv->camera_element = camera;
@@ -189,7 +197,8 @@ static void vmp_combined_add_presentation_element(VMPCombinedBin *bin, GstElemen
     priv = vmp_combined_bin_get_instance_private(bin);
 
     g_return_if_fail(GST_IS_ELEMENT(presentation));
-    g_object_unref(priv->presentation_element);
+    if (priv->presentation_element)
+        g_object_unref(priv->presentation_element);
     g_object_ref(presentation);
 
     priv->presentation_element = presentation;
