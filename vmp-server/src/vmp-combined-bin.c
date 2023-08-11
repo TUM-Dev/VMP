@@ -5,7 +5,6 @@
  */
 
 #include "vmp-combined-bin.h"
-#include "vmp-video-configuration.h"
 
 #include <gst/gst.h>
 
@@ -41,41 +40,11 @@ G_DEFINE_TYPE_WITH_PRIVATE(VMPCombinedBin, vmp_combined_bin, GST_TYPE_BIN);
 static void vmp_combined_bin_set_property(GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec);
 static void vmp_combined_add_camera_element(VMPCombinedBin *bin, GstElement *camera);
 static void vmp_combined_add_presentation_element(VMPCombinedBin *bin, GstElement *presentation);
+static void vmp_combined_bin_constructed(GObject *object);
 static void vmp_combined_bin_finalize(GObject *object);
 
 static void vmp_combined_bin_init(VMPCombinedBin *self)
 {
-    GstBin *bin;
-    // VMPCombinedBinPrivate *priv;
-
-    // priv = vmp_combined_bin_get_instance_private(self);
-    bin = GST_BIN(self);
-
-    // Check if source elements are present (TODO: Fail with warning)
-    // g_return_if_fail(GST_IS_ELEMENT(priv->camera_element));
-    // g_return_if_fail(GST_IS_ELEMENT(priv->presentation_element));
-
-    // FIXME: Dummy Configuration
-    GstElement *videotestsrc = gst_element_factory_make("videotestsrc", "videotestsrc");
-    GstElement *x264enc = gst_element_factory_make("x264enc", "x264enc");
-    GstElement *rtph264pay = gst_element_factory_make("rtph264pay", "pay0");
-
-    if (!videotestsrc || !x264enc || !rtph264pay)
-    {
-        g_error("Failed to create elements");
-    }
-
-    // Set properties if needed
-    g_object_set(rtph264pay, "pt", 96, NULL);
-
-    // Add elements to the bin
-    gst_bin_add_many(GST_BIN(bin), videotestsrc, x264enc, rtph264pay, NULL);
-
-    // Link elements
-    if (!gst_element_link_many(videotestsrc, x264enc, rtph264pay, NULL))
-    {
-        g_error("Failed to link elements");
-    }
 }
 
 static void vmp_combined_bin_class_init(VMPCombinedBinClass *self)
@@ -84,6 +53,7 @@ static void vmp_combined_bin_class_init(VMPCombinedBinClass *self)
     gobject_class = G_OBJECT_CLASS(self);
 
     gobject_class->set_property = vmp_combined_bin_set_property;
+    gobject_class->constructed = vmp_combined_bin_constructed;
     gobject_class->finalize = vmp_combined_bin_finalize;
 
     obj_properties[PROP_OUTPUT_CONFIGURATION] = g_param_spec_boxed("output-configuration",
@@ -119,13 +89,62 @@ static void vmp_combined_bin_class_init(VMPCombinedBinClass *self)
     g_object_class_install_properties(gobject_class, N_PROPERTIES, obj_properties);
 }
 
-VMPCombinedBin *vmp_combined_bin_new(void)
+VMPCombinedBin *vmp_combined_bin_new(VMPVideoConfiguration *output,
+                                     GstElement *camera, VMPVideoConfiguration *camera_config,
+                                     GstElement *presentation, VMPVideoConfiguration *presentation_config)
+
 {
     VMPCombinedBin *result;
 
-    result = g_object_new(VMP_TYPE_COMBINED_BIN, NULL);
+    result = g_object_new(VMP_TYPE_COMBINED_BIN,
+                          "output-configuration", output,
+                          "camera-configuration", camera_config,
+                          "presentation-configuration", presentation_config,
+                          "camera-element", camera,
+                          "presentation-element", presentation, NULL);
 
     return result;
+}
+
+static void vmp_combined_bin_constructed(GObject *object)
+{
+    // Call constructed func of GstBin first
+    G_OBJECT_CLASS(vmp_combined_bin_parent_class)->constructed(object);
+
+    GstBin *bin;
+    VMPCombinedBinPrivate *priv;
+
+    priv = vmp_combined_bin_get_instance_private(VMP_COMBINED_BIN(object));
+    bin = GST_BIN(object);
+
+    // Check if source elements are present (TODO: Fail with warning)
+    g_return_if_fail(GST_IS_ELEMENT(priv->camera_element));
+    g_return_if_fail(GST_IS_ELEMENT(priv->presentation_element));
+    g_return_if_fail(priv->output_configuration);
+    g_return_if_fail(priv->camera_configuration);
+    g_return_if_fail(priv->presentation_configuration);
+
+    // FIXME: Dummy Configuration
+    GstElement *videotestsrc = gst_element_factory_make("videotestsrc", "videotestsrc");
+    GstElement *x264enc = gst_element_factory_make("x264enc", "x264enc");
+    GstElement *rtph264pay = gst_element_factory_make("rtph264pay", "pay0");
+
+    if (!videotestsrc || !x264enc || !rtph264pay)
+    {
+        g_error("Failed to create elements");
+    }
+
+    // Set properties if needed
+    g_object_set(rtph264pay, "pt", 96, NULL);
+
+    // Add elements to the bin
+    gst_bin_add_many(GST_BIN(bin), videotestsrc, x264enc, rtph264pay, NULL);
+
+    // Link elements
+    if (!gst_element_link_many(videotestsrc, x264enc, rtph264pay, NULL))
+    {
+        g_error("Failed to link elements");
+    }
 }
 
 static void vmp_combined_bin_set_property(GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
@@ -137,13 +156,13 @@ static void vmp_combined_bin_set_property(GObject *object, guint prop_id, const 
     {
         // FIXME: Dup or Boxed?
     case PROP_OUTPUT_CONFIGURATION:
-        priv->output_configuration = g_value_dup_object(value);
+        priv->output_configuration = g_value_dup_boxed(value);
         break;
     case PROP_CAMERA_CONFIGURATION:
-        priv->camera_configuration = g_value_dup_object(value);
+        priv->camera_configuration = g_value_dup_boxed(value);
         break;
     case PROP_PRESENTATION_CONFIGURATION:
-        priv->presentation_configuration = g_value_dup_object(value);
+        priv->presentation_configuration = g_value_dup_boxed(value);
         break;
     case PROP_CAMERA_ELEMENT:
         vmp_combined_add_camera_element(self, GST_ELEMENT(g_value_get_object(value)));
