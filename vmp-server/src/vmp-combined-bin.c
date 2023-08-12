@@ -106,13 +106,25 @@ VMPCombinedBin *vmp_combined_bin_new(VMPVideoConfiguration *output,
     return result;
 }
 
+/*
+ * Construct the combined video bin that composites the camera and presentation sources.
+ * Properties are presented when vmp_combined_bin_constructed is called.
+ */
 static void vmp_combined_bin_constructed(GObject *object)
 {
     // Call constructed func of GstBin first
     G_OBJECT_CLASS(vmp_combined_bin_parent_class)->constructed(object);
 
-    GstBin *bin;
     VMPCombinedBinPrivate *priv;
+    GstBin *bin;
+    GstElement *compositor;
+    GstElement *compositor_caps_filter;
+    GstElement *camera_videoscale;
+    GstElement *camera_caps_filter;
+    GstElement *presentation_videoscale;
+    GstElement *presentation_caps_filter;
+    GstElement *x264enc;
+    GstElement *rtph264pay;
 
     priv = vmp_combined_bin_get_instance_private(VMP_COMBINED_BIN(object));
     bin = GST_BIN(object);
@@ -124,27 +136,142 @@ static void vmp_combined_bin_constructed(GObject *object)
     g_return_if_fail(priv->camera_configuration);
     g_return_if_fail(priv->presentation_configuration);
 
-    // FIXME: Dummy Configuration
-    GstElement *videotestsrc = gst_element_factory_make("videotestsrc", "videotestsrc");
-    GstElement *x264enc = gst_element_factory_make("x264enc", "x264enc");
-    GstElement *rtph264pay = gst_element_factory_make("rtph264pay", "pay0");
+    compositor = gst_element_factory_make("compositor", "compositor");
+    compositor_caps_filter = gst_element_factory_make("capsfilter", "compositor_capsfilter");
+    presentation_videoscale = gst_element_factory_make("videoscale", "presentation_videoscale");
+    presentation_caps_filter = gst_element_factory_make("capsfilter", "presentation_capsfilter");
+    camera_videoscale = gst_element_factory_make("videoscale", "camera_videoscale");
+    camera_caps_filter = gst_element_factory_make("capsfilter", "camera_capsfilter");
+    x264enc = gst_element_factory_make("x264enc", "x264enc");
+    rtph264pay = gst_element_factory_make("rtph264pay", "pay0");
 
-    if (!videotestsrc || !x264enc || !rtph264pay)
+    if (!compositor || !compositor_caps_filter || !presentation_videoscale ||
+        !presentation_caps_filter || !camera_videoscale || !camera_caps_filter || !x264enc || !rtph264pay)
     {
-        g_error("Failed to create elements");
+        GST_ERROR("Failed to create elements required for compositing");
+        return;
     }
 
-    // Set properties if needed
-    g_object_set(rtph264pay, "pt", 96, NULL);
+    // Set properties of compositor
+    g_object_set(G_OBJECT(compositor), "background", 1, NULL);
+
+    /*
+     * Build Caps from VMPVideoConfiguration
+     */
+    GstCaps *compositor_caps;
+    GstCaps *presentation_caps;
+    GstCaps *camera_caps;
+
+    compositor_caps = gst_caps_new_simple("video/x-raw",
+                                          "width", G_TYPE_INT, priv->output_configuration->width,
+                                          "height", G_TYPE_INT, priv->output_configuration->height, NULL);
+    presentation_caps = gst_caps_new_simple("video/x-raw",
+                                            "width", G_TYPE_INT, priv->presentation_configuration->width,
+                                            "height", G_TYPE_INT, priv->presentation_configuration->height,
+                                            "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1, NULL);
+    camera_caps = gst_caps_new_simple("video/x-raw",
+                                      "width", G_TYPE_INT, priv->camera_configuration->width,
+                                      "height", G_TYPE_INT, priv->camera_configuration->height,
+                                      "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1, NULL);
+
+    g_object_set(G_OBJECT(compositor_caps_filter), "caps", compositor_caps, NULL);
+    g_object_set(G_OBJECT(presentation_caps_filter), "caps", presentation_caps, NULL);
+    g_object_set(G_OBJECT(camera_caps_filter), "caps", camera_caps, NULL);
+
+    gst_caps_unref(compositor_caps);
+    gst_caps_unref(presentation_caps);
+    gst_caps_unref(camera_caps);
+
+    /*
+     * Add elements to the bin, and link subcomponents
+     */
 
     // Add elements to the bin
-    gst_bin_add_many(GST_BIN(bin), videotestsrc, x264enc, rtph264pay, NULL);
+    gst_bin_add_many(GST_BIN(bin), priv->presentation_element, presentation_videoscale, presentation_caps_filter, NULL);
+    gst_bin_add_many(GST_BIN(bin), priv->camera_element, camera_videoscale, camera_caps_filter, NULL);
+    gst_bin_add_many(GST_BIN(bin), compositor, compositor_caps_filter, x264enc, rtph264pay, NULL);
+
+    /* Set properties of rtp payloader.
+     * RTP Payload Format '96' is often used as the default value for H.264 video.
+     */
+    g_object_set(rtph264pay, "pt", 96, NULL);
 
     // Link elements
-    if (!gst_element_link_many(videotestsrc, x264enc, rtph264pay, NULL))
+    if (!gst_element_link_many(priv->camera_element, camera_videoscale, camera_caps_filter, NULL))
     {
-        g_error("Failed to link elements");
+        GST_ERROR("Failed to link camera elements!");
+        return;
     }
+    if (!gst_element_link_many(priv->presentation_element, presentation_videoscale, presentation_caps_filter, NULL))
+    {
+        GST_ERROR("Failed to link presentation elements!");
+        return;
+    }
+    if (!gst_element_link_many(compositor, compositor_caps_filter, x264enc, rtph264pay, NULL))
+    {
+        GST_ERROR("Failed to link compositor elements!");
+        return;
+    }
+
+    /*
+     * Pad Configuration for Compositor
+     */
+
+    GstPad *source_camera_pad;
+    GstPad *sink_camera_pad;
+    GstPad *source_presentation_pad;
+    GstPad *sink_presentation_pad;
+    GstPadTemplate *sink_template;
+
+    // Get source pads from the source elements
+    source_camera_pad = gst_element_get_static_pad(camera_caps_filter, "src");
+    source_presentation_pad = gst_element_get_static_pad(presentation_caps_filter, "src");
+    if (!source_camera_pad || !source_presentation_pad)
+    {
+        GST_ERROR("Failed to acquire source pads from camera_caps_filter or presentation_caps_filter!");
+        return;
+    }
+
+    // Request sink pads from the compositor
+    sink_template = gst_element_class_get_pad_template(GST_ELEMENT_GET_CLASS(compositor), "sink_%u");
+    sink_camera_pad = gst_element_request_pad(compositor, sink_template, NULL, NULL);
+    sink_presentation_pad = gst_element_request_pad(compositor, sink_template, NULL, NULL);
+    if (!sink_camera_pad || !sink_presentation_pad)
+    {
+        GST_ERROR("Failed to acquire sink pads from compositor!");
+        return;
+    }
+
+    gint camera_pad_width = priv->output_configuration->width - priv->camera_configuration->width;
+    g_object_set(G_OBJECT(sink_camera_pad), "xpos", camera_pad_width, NULL);
+    g_object_set(G_OBJECT(sink_camera_pad), "ypos", 0, NULL);
+
+    g_object_set(G_OBJECT(sink_presentation_pad), "xpos", 0, NULL);
+    g_object_set(G_OBJECT(sink_presentation_pad), "ypos", 0, NULL);
+
+    GstPadLinkReturn link_camera_ret;
+    GstPadLinkReturn link_presentation_ret;
+
+    /* NOTE: Linking pads manually is done AFTER linking the elements automatically.
+     * Otherwise the pads will be unlinked by gstreamer.
+     */
+    link_camera_ret = gst_pad_link(source_camera_pad, sink_camera_pad);
+    if (link_camera_ret != GST_PAD_LINK_OK)
+    {
+        GST_ERROR("Failed to link camera source to compositor! Error: %s", gst_pad_link_get_name(link_camera_ret));
+        return;
+    }
+    link_presentation_ret = gst_pad_link(source_presentation_pad, sink_presentation_pad);
+    if (link_presentation_ret != GST_PAD_LINK_OK)
+    {
+        GST_ERROR("Failed to link presentation source to compositor! Error: %s", gst_pad_link_get_name(link_presentation_ret));
+        return;
+    }
+
+    g_object_unref(source_camera_pad);
+    g_object_unref(sink_camera_pad);
+    g_object_unref(source_presentation_pad);
+    g_object_unref(sink_presentation_pad);
 }
 
 static void vmp_combined_bin_set_property(GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)

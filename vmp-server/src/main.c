@@ -26,8 +26,8 @@ int main(int argc, char *argv[])
     mounts = gst_rtsp_server_get_mount_points(server);
 
     // Create a dummy pipeline
-    GstElement *camera_mock = gst_element_factory_make("videotestsrc", "videotestsrc");
-    GstElement *presentation_mock = gst_element_factory_make("videotestsrc", "videotestsrc");
+    GstElement *camera_mock = gst_element_factory_make("videotestsrc", "camera_videotestsrc");
+    GstElement *presentation_mock = gst_element_factory_make("videotestsrc", "presentation_videotestsrc");
     VMPVideoConfiguration *camera_config = g_new(VMPVideoConfiguration, 1);
     VMPVideoConfiguration *presentation_config = g_new(VMPVideoConfiguration, 1);
     VMPVideoConfiguration *output_config = g_new(VMPVideoConfiguration, 1);
@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     presentation_config->height = 810;
 
     output_config->width = 1920;
-    output_config->width = 1080;
+    output_config->height = 1080;
 
     GstElement *element = GST_ELEMENT(vmp_combined_bin_new(output_config, camera_mock, camera_config, presentation_mock, presentation_config));
 
