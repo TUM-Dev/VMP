@@ -35,7 +35,8 @@ static void vmp_media_factory_add_element(VMPMediaFactory *self, GstElement *ele
 
 static void vmp_media_factory_init(VMPMediaFactory *self)
 {
-    // Initialize instance members if necessary
+    // Set the media factory to be shared
+    g_object_set(GST_RTSP_MEDIA_FACTORY(self), "shared", TRUE, NULL);
 }
 
 static void vmp_media_factory_class_init(VMPMediaFactoryClass *self)
