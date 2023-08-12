@@ -10,7 +10,7 @@
 #include <gst/gstbin.h>
 #include <gst/gstelement.h>
 
-#include "vmp-video-configuration.h"
+#include "vmp-video-config.h"
 
 G_BEGIN_DECLS
 
@@ -22,9 +22,9 @@ struct _VMPCombinedBin
     GstBin parent;
 };
 
-VMPCombinedBin *vmp_combined_bin_new(VMPVideoConfiguration *output,
-                                     GstElement *camera, VMPVideoConfiguration *camera_config,
-                                     GstElement *presentation, VMPVideoConfiguration *presentation_config);
+VMPCombinedBin *vmp_combined_bin_new(VMPVideoConfig *output,
+                                     GstElement *camera, VMPVideoConfig *camera_config,
+                                     GstElement *presentation, VMPVideoConfig *presentation_config);
 
 G_END_DECLS
 

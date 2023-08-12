@@ -19,6 +19,13 @@ enum _VMPCombinedBinProperty
     N_PROPERTIES
 };
 
+enum _VMPCombinedBinConfigurationType
+{
+    VMP_COMBINED_BIN_OUTPUT_CONFIGURATION,
+    VMP_COMBINED_BIN_CAMERA_CONFIGURATION,
+    VMP_COMBINED_BIN_PRESENTATION_CONFIGURATION
+};
+
 static GParamSpec *obj_properties[N_PROPERTIES] = {
     NULL,
 };
@@ -29,15 +36,16 @@ typedef struct _VMPCombinedBinPrivate
     GstElement *presentation_element;
 
     // Configuration for the camera, and presentation sources used when composing the combined output
-    VMPVideoConfiguration *output_configuration;
-    VMPVideoConfiguration *camera_configuration;
-    VMPVideoConfiguration *presentation_configuration;
+    VMPVideoConfig *output_configuration;
+    VMPVideoConfig *camera_configuration;
+    VMPVideoConfig *presentation_configuration;
 } VMPCombinedBinPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE(VMPCombinedBin, vmp_combined_bin, GST_TYPE_BIN);
 
 // Forward Declarations
 static void vmp_combined_bin_set_property(GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec);
+static void vmp_combined_bin_add_configuration(VMPCombinedBin *bin, enum _VMPCombinedBinConfigurationType type, VMPVideoConfig *output);
 static void vmp_combined_add_camera_element(VMPCombinedBin *bin, GstElement *camera);
 static void vmp_combined_add_presentation_element(VMPCombinedBin *bin, GstElement *presentation);
 static void vmp_combined_bin_constructed(GObject *object);
@@ -56,23 +64,23 @@ static void vmp_combined_bin_class_init(VMPCombinedBinClass *self)
     gobject_class->constructed = vmp_combined_bin_constructed;
     gobject_class->finalize = vmp_combined_bin_finalize;
 
-    obj_properties[PROP_OUTPUT_CONFIGURATION] = g_param_spec_boxed("output-configuration",
-                                                                   "Output Configuration",
-                                                                   "Configuration for the combined output",
-                                                                   VMP_TYPE_VIDEO_CONFIGURATION,
-                                                                   G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+    obj_properties[PROP_OUTPUT_CONFIGURATION] = g_param_spec_object("output-configuration",
+                                                                    "Output Configuration",
+                                                                    "Configuration for the combined output",
+                                                                    VMP_TYPE_VIDEO_CONFIG,
+                                                                    G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
 
-    obj_properties[PROP_CAMERA_CONFIGURATION] = g_param_spec_boxed("camera-configuration",
-                                                                   "Camera Configuration",
-                                                                   "Configuration for the camera source",
-                                                                   VMP_TYPE_VIDEO_CONFIGURATION,
-                                                                   G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+    obj_properties[PROP_CAMERA_CONFIGURATION] = g_param_spec_object("camera-configuration",
+                                                                    "Camera Configuration",
+                                                                    "Configuration for the camera source",
+                                                                    VMP_TYPE_VIDEO_CONFIG,
+                                                                    G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
 
-    obj_properties[PROP_PRESENTATION_CONFIGURATION] = g_param_spec_boxed("presentation-configuration",
-                                                                         "Presentation Configuration",
-                                                                         "Configuration for the presentation source",
-                                                                         VMP_TYPE_VIDEO_CONFIGURATION,
-                                                                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+    obj_properties[PROP_PRESENTATION_CONFIGURATION] = g_param_spec_object("presentation-configuration",
+                                                                          "Presentation Configuration",
+                                                                          "Configuration for the presentation source",
+                                                                          VMP_TYPE_VIDEO_CONFIG,
+                                                                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
 
     obj_properties[PROP_CAMERA_ELEMENT] = g_param_spec_object("camera-element",
                                                               "Camera Element",
@@ -89,9 +97,9 @@ static void vmp_combined_bin_class_init(VMPCombinedBinClass *self)
     g_object_class_install_properties(gobject_class, N_PROPERTIES, obj_properties);
 }
 
-VMPCombinedBin *vmp_combined_bin_new(VMPVideoConfiguration *output,
-                                     GstElement *camera, VMPVideoConfiguration *camera_config,
-                                     GstElement *presentation, VMPVideoConfiguration *presentation_config)
+VMPCombinedBin *vmp_combined_bin_new(VMPVideoConfig *output,
+                                     GstElement *camera, VMPVideoConfig *camera_config,
+                                     GstElement *presentation, VMPVideoConfig *presentation_config)
 
 {
     VMPCombinedBin *result;
@@ -163,15 +171,15 @@ static void vmp_combined_bin_constructed(GObject *object)
     GstCaps *camera_caps;
 
     compositor_caps = gst_caps_new_simple("video/x-raw",
-                                          "width", G_TYPE_INT, priv->output_configuration->width,
-                                          "height", G_TYPE_INT, priv->output_configuration->height, NULL);
+                                          "width", G_TYPE_INT, vmp_video_config_get_width(priv->output_configuration),
+                                          "height", G_TYPE_INT, vmp_video_config_get_height(priv->output_configuration), NULL);
     presentation_caps = gst_caps_new_simple("video/x-raw",
-                                            "width", G_TYPE_INT, priv->presentation_configuration->width,
-                                            "height", G_TYPE_INT, priv->presentation_configuration->height,
+                                            "width", G_TYPE_INT, vmp_video_config_get_width(priv->presentation_configuration),
+                                            "height", G_TYPE_INT, vmp_video_config_get_height(priv->presentation_configuration),
                                             "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1, NULL);
     camera_caps = gst_caps_new_simple("video/x-raw",
-                                      "width", G_TYPE_INT, priv->camera_configuration->width,
-                                      "height", G_TYPE_INT, priv->camera_configuration->height,
+                                      "width", G_TYPE_INT, vmp_video_config_get_width(priv->camera_configuration),
+                                      "height", G_TYPE_INT, vmp_video_config_get_height(priv->camera_configuration),
                                       "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1, NULL);
 
     g_object_set(G_OBJECT(compositor_caps_filter), "caps", compositor_caps, NULL);
@@ -242,7 +250,7 @@ static void vmp_combined_bin_constructed(GObject *object)
         return;
     }
 
-    gint camera_pad_width = priv->output_configuration->width - priv->camera_configuration->width;
+    gint camera_pad_width = vmp_video_config_get_width(priv->output_configuration) - vmp_video_config_get_width(priv->camera_configuration);
     g_object_set(G_OBJECT(sink_camera_pad), "xpos", camera_pad_width, NULL);
     g_object_set(G_OBJECT(sink_camera_pad), "ypos", 0, NULL);
 
@@ -277,19 +285,17 @@ static void vmp_combined_bin_constructed(GObject *object)
 static void vmp_combined_bin_set_property(GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
 {
     VMPCombinedBin *self = VMP_COMBINED_BIN(object);
-    VMPCombinedBinPrivate *priv = vmp_combined_bin_get_instance_private(self);
 
     switch (prop_id)
     {
-        // FIXME: Dup or Boxed?
     case PROP_OUTPUT_CONFIGURATION:
-        priv->output_configuration = g_value_dup_boxed(value);
+        vmp_combined_bin_add_configuration(self, VMP_COMBINED_BIN_OUTPUT_CONFIGURATION, g_value_dup_object(value));
         break;
     case PROP_CAMERA_CONFIGURATION:
-        priv->camera_configuration = g_value_dup_boxed(value);
+        vmp_combined_bin_add_configuration(self, VMP_COMBINED_BIN_CAMERA_CONFIGURATION, g_value_dup_object(value));
         break;
     case PROP_PRESENTATION_CONFIGURATION:
-        priv->presentation_configuration = g_value_dup_boxed(value);
+        vmp_combined_bin_add_configuration(self, VMP_COMBINED_BIN_PRESENTATION_CONFIGURATION, g_value_dup_object(value));
         break;
     case PROP_CAMERA_ELEMENT:
         vmp_combined_add_camera_element(self, GST_ELEMENT(g_value_get_object(value)));
@@ -318,6 +324,36 @@ static void vmp_combined_bin_finalize(GObject *object)
     g_clear_object(&priv->presentation_element);
 
     G_OBJECT_CLASS(vmp_combined_bin_parent_class)->finalize(object);
+}
+
+static void vmp_combined_bin_add_configuration(VMPCombinedBin *bin, enum _VMPCombinedBinConfigurationType type, VMPVideoConfig *output)
+{
+    VMPCombinedBinPrivate *priv;
+
+    priv = vmp_combined_bin_get_instance_private(bin);
+
+    g_return_if_fail(VMP_IS_VIDEO_CONFIG(output));
+
+    switch (type)
+    {
+    case VMP_COMBINED_BIN_OUTPUT_CONFIGURATION:
+        if (priv->output_configuration)
+            g_object_unref(priv->output_configuration);
+        priv->output_configuration = output;
+        break;
+    case VMP_COMBINED_BIN_CAMERA_CONFIGURATION:
+        if (priv->camera_configuration)
+            g_object_unref(priv->camera_configuration);
+        priv->camera_configuration = output;
+        break;
+    case VMP_COMBINED_BIN_PRESENTATION_CONFIGURATION:
+        if (priv->presentation_configuration)
+            g_object_unref(priv->presentation_configuration);
+        priv->presentation_configuration = output;
+        break;
+    };
+
+    g_object_ref(output);
 }
 
 static void vmp_combined_add_camera_element(VMPCombinedBin *bin, GstElement *camera)
