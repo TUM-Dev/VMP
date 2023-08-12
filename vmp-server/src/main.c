@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
     // Create a dummy pipeline
     GstElement *camera_mock = gst_element_factory_make("videotestsrc", "camera_videotestsrc");
     GstElement *presentation_mock = gst_element_factory_make("videotestsrc", "presentation_videotestsrc");
+    GstElement *audio_mock = gst_element_factory_make("audiotestsrc", "audiotestsrc");
     VMPVideoConfig *camera_config = vmp_video_config_new(480, 270);
     VMPVideoConfig *presentation_config = vmp_video_config_new(1440, 810);
     VMPVideoConfig *output_config = vmp_video_config_new(1920, 1080);
@@ -37,7 +38,7 @@ int main(int argc, char *argv[])
         g_error("Dummy pipeline was not correctly initialised!");
     }
 
-    GstElement *element = GST_ELEMENT(vmp_combined_bin_new(output_config, camera_mock, camera_config, presentation_mock, presentation_config));
+    GstElement *element = GST_ELEMENT(vmp_combined_bin_new(output_config, camera_mock, camera_config, presentation_mock, presentation_config, audio_mock));
 
     // Full transfer to VMPCombinedBin
     g_object_unref(camera_config);

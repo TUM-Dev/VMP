@@ -16,6 +16,7 @@ enum _VMPCombinedBinProperty
     PROP_PRESENTATION_CONFIGURATION,
     PROP_CAMERA_ELEMENT,
     PROP_PRESENTATION_ELEMENT,
+    PROP_AUDIO_ELEMENT,
     N_PROPERTIES
 };
 
@@ -26,6 +27,13 @@ enum _VMPCombinedBinConfigurationType
     VMP_COMBINED_BIN_PRESENTATION_CONFIGURATION
 };
 
+enum _VMPCombinedBinElementType
+{
+    VMP_COMBINED_BIN_CAMERA_ELEMENT,
+    VMP_COMBINED_BIN_PRESENTATION_ELEMENT,
+    VMP_COMBINED_BIN_AUDIO_ELEMENT
+};
+
 static GParamSpec *obj_properties[N_PROPERTIES] = {
     NULL,
 };
@@ -34,6 +42,7 @@ typedef struct _VMPCombinedBinPrivate
 {
     GstElement *camera_element;
     GstElement *presentation_element;
+    GstElement *audio_element;
 
     // Configuration for the camera, and presentation sources used when composing the combined output
     VMPVideoConfig *output_configuration;
@@ -46,8 +55,7 @@ G_DEFINE_TYPE_WITH_PRIVATE(VMPCombinedBin, vmp_combined_bin, GST_TYPE_BIN);
 // Forward Declarations
 static void vmp_combined_bin_set_property(GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec);
 static void vmp_combined_bin_add_configuration(VMPCombinedBin *bin, enum _VMPCombinedBinConfigurationType type, VMPVideoConfig *output);
-static void vmp_combined_add_camera_element(VMPCombinedBin *bin, GstElement *camera);
-static void vmp_combined_add_presentation_element(VMPCombinedBin *bin, GstElement *presentation);
+static void vmp_combined_add_element(VMPCombinedBin *bin, enum _VMPCombinedBinElementType type, GstElement *element);
 static void vmp_combined_bin_constructed(GObject *object);
 static void vmp_combined_bin_finalize(GObject *object);
 
@@ -94,12 +102,18 @@ static void vmp_combined_bin_class_init(VMPCombinedBinClass *self)
                                                                     GST_TYPE_ELEMENT,
                                                                     G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
 
+    obj_properties[PROP_AUDIO_ELEMENT] = g_param_spec_object("audio-element", "Audio Element",
+                                                             "Element for the audio source",
+                                                             GST_TYPE_ELEMENT,
+                                                             G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+
     g_object_class_install_properties(gobject_class, N_PROPERTIES, obj_properties);
 }
 
 VMPCombinedBin *vmp_combined_bin_new(VMPVideoConfig *output,
                                      GstElement *camera, VMPVideoConfig *camera_config,
-                                     GstElement *presentation, VMPVideoConfig *presentation_config)
+                                     GstElement *presentation, VMPVideoConfig *presentation_config,
+                                     GstElement *audio)
 
 {
     VMPCombinedBin *result;
@@ -109,7 +123,8 @@ VMPCombinedBin *vmp_combined_bin_new(VMPVideoConfig *output,
                           "camera-configuration", camera_config,
                           "presentation-configuration", presentation_config,
                           "camera-element", camera,
-                          "presentation-element", presentation, NULL);
+                          "presentation-element", presentation,
+                          "audio-element", audio, NULL);
 
     return result;
 }
@@ -131,8 +146,10 @@ static void vmp_combined_bin_constructed(GObject *object)
     GstElement *camera_caps_filter;
     GstElement *presentation_videoscale;
     GstElement *presentation_caps_filter;
+    GstElement *aacenc;
     GstElement *x264enc;
     GstElement *rtph264pay;
+    GstElement *rtpmp4apay;
 
     priv = vmp_combined_bin_get_instance_private(VMP_COMBINED_BIN(object));
     bin = GST_BIN(object);
@@ -150,8 +167,11 @@ static void vmp_combined_bin_constructed(GObject *object)
     presentation_caps_filter = gst_element_factory_make("capsfilter", "presentation_capsfilter");
     camera_videoscale = gst_element_factory_make("videoscale", "camera_videoscale");
     camera_caps_filter = gst_element_factory_make("capsfilter", "camera_capsfilter");
+    // TODO: Conditionally use Nvidia NVENC when on Jetson hardware
     x264enc = gst_element_factory_make("x264enc", "x264enc");
+    aacenc = gst_element_factory_make("voaacenc", "aacenc");
     rtph264pay = gst_element_factory_make("rtph264pay", "pay0");
+    rtpmp4apay = gst_element_factory_make("rtpmp4apay", "pay1");
 
     if (!compositor || !compositor_caps_filter || !presentation_videoscale ||
         !presentation_caps_filter || !camera_videoscale || !camera_caps_filter || !x264enc || !rtph264pay)
@@ -162,6 +182,15 @@ static void vmp_combined_bin_constructed(GObject *object)
 
     // Set properties of compositor
     g_object_set(G_OBJECT(compositor), "background", 1, NULL);
+
+    g_object_set(aacenc, "bitrate", 128000, NULL);
+
+    /* Set properties of rtp payloader.
+     * RTP Payload Format '96' is often used as the default value for H.264 video.
+     * RTP Payload Format '97' is often used as the default value for AAC audio.
+     */
+    g_object_set(rtph264pay, "pt", 96, NULL);
+    g_object_set(rtpmp4apay, "pt", 97, NULL);
 
     /*
      * Build Caps from VMPVideoConfiguration
@@ -198,11 +227,7 @@ static void vmp_combined_bin_constructed(GObject *object)
     gst_bin_add_many(GST_BIN(bin), priv->presentation_element, presentation_videoscale, presentation_caps_filter, NULL);
     gst_bin_add_many(GST_BIN(bin), priv->camera_element, camera_videoscale, camera_caps_filter, NULL);
     gst_bin_add_many(GST_BIN(bin), compositor, compositor_caps_filter, x264enc, rtph264pay, NULL);
-
-    /* Set properties of rtp payloader.
-     * RTP Payload Format '96' is often used as the default value for H.264 video.
-     */
-    g_object_set(rtph264pay, "pt", 96, NULL);
+    gst_bin_add_many(GST_BIN(bin), priv->audio_element, aacenc, rtpmp4apay, NULL);
 
     // Link elements
     if (!gst_element_link_many(priv->camera_element, camera_videoscale, camera_caps_filter, NULL))
@@ -218,6 +243,11 @@ static void vmp_combined_bin_constructed(GObject *object)
     if (!gst_element_link_many(compositor, compositor_caps_filter, x264enc, rtph264pay, NULL))
     {
         GST_ERROR("Failed to link compositor elements!");
+        return;
+    }
+    if (!gst_element_link_many(priv->audio_element, aacenc, rtpmp4apay, NULL))
+    {
+        GST_ERROR("Failed to link audio elements!");
         return;
     }
 
@@ -298,10 +328,13 @@ static void vmp_combined_bin_set_property(GObject *object, guint prop_id, const 
         vmp_combined_bin_add_configuration(self, VMP_COMBINED_BIN_PRESENTATION_CONFIGURATION, g_value_dup_object(value));
         break;
     case PROP_CAMERA_ELEMENT:
-        vmp_combined_add_camera_element(self, GST_ELEMENT(g_value_get_object(value)));
+        vmp_combined_add_element(self, VMP_COMBINED_BIN_CAMERA_ELEMENT, GST_ELEMENT(g_value_get_object(value)));
         break;
     case PROP_PRESENTATION_ELEMENT:
-        vmp_combined_add_presentation_element(self, GST_ELEMENT(g_value_get_object(value)));
+        vmp_combined_add_element(self, VMP_COMBINED_BIN_PRESENTATION_ELEMENT, GST_ELEMENT(g_value_get_object(value)));
+        break;
+    case PROP_AUDIO_ELEMENT:
+        vmp_combined_add_element(self, VMP_COMBINED_BIN_AUDIO_ELEMENT, GST_ELEMENT(g_value_get_object(value)));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -322,6 +355,7 @@ static void vmp_combined_bin_finalize(GObject *object)
     g_clear_object(&priv->presentation_configuration);
     g_clear_object(&priv->camera_element);
     g_clear_object(&priv->presentation_element);
+    g_clear_object(&priv->audio_element);
 
     G_OBJECT_CLASS(vmp_combined_bin_parent_class)->finalize(object);
 }
@@ -356,32 +390,32 @@ static void vmp_combined_bin_add_configuration(VMPCombinedBin *bin, enum _VMPCom
     g_object_ref(output);
 }
 
-static void vmp_combined_add_camera_element(VMPCombinedBin *bin, GstElement *camera)
+static void vmp_combined_add_element(VMPCombinedBin *bin, enum _VMPCombinedBinElementType type, GstElement *element)
 {
     VMPCombinedBinPrivate *priv;
 
     priv = vmp_combined_bin_get_instance_private(bin);
 
-    // TODO: Print out warning as well
-    g_return_if_fail(GST_IS_ELEMENT(camera));
+    g_return_if_fail(GST_IS_ELEMENT(element));
 
-    // Unref previous object when present
-    if (priv->camera_element)
-        g_object_unref(priv->camera_element);
-    g_object_ref(camera);
+    switch (type)
+    {
+    case VMP_COMBINED_BIN_CAMERA_ELEMENT:
+        if (priv->camera_element)
+            g_object_unref(priv->camera_element);
+        priv->camera_element = element;
+        break;
+    case VMP_COMBINED_BIN_PRESENTATION_ELEMENT:
+        if (priv->presentation_element)
+            g_object_unref(priv->presentation_element);
+        priv->presentation_element = element;
+        break;
+    case VMP_COMBINED_BIN_AUDIO_ELEMENT:
+        if (priv->audio_element)
+            g_object_unref(priv->audio_element);
+        priv->audio_element = element;
+        break;
+    };
 
-    priv->camera_element = camera;
-}
-static void vmp_combined_add_presentation_element(VMPCombinedBin *bin, GstElement *presentation)
-{
-    VMPCombinedBinPrivate *priv;
-
-    priv = vmp_combined_bin_get_instance_private(bin);
-
-    g_return_if_fail(GST_IS_ELEMENT(presentation));
-    if (priv->presentation_element)
-        g_object_unref(priv->presentation_element);
-    g_object_ref(presentation);
-
-    priv->presentation_element = presentation;
+    g_object_ref(element);
 }
