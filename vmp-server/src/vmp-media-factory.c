@@ -241,8 +241,10 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
     audio_interpipe = gst_element_factory_make("interaudiosrc", "audio_interpipe");
     audio_queue = gst_element_factory_make("queue", "audio_queue");
     audio_audioconvert = gst_element_factory_make("audioconvert", "audio_audioconvert");
+    // TODO: Do we need an audioresampler?
+    GstElement *audio_buffer = gst_element_factory_make("queue", "audio_buffer");
 
-    if (!audio_interpipe || !audio_queue || !audio_audioconvert)
+    if (!audio_interpipe || !audio_queue || !audio_audioconvert || !audio_buffer)
     {
         GST_ERROR("Failed to create elements required for audio stream processing");
         return NULL;
@@ -315,7 +317,7 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
     gst_bin_add_many(GST_BIN(bin), presentation_interpipe, presentation_queue, presentation_videoconvert, presentation_videoscale, presentation_caps_filter, NULL);
     gst_bin_add_many(GST_BIN(bin), camera_interpipe, camera_queue, camera_videoconvert, camera_videoscale, camera_caps_filter, NULL);
     gst_bin_add_many(GST_BIN(bin), compositor, compositor_caps_filter, x264enc, rtph264pay, NULL);
-    gst_bin_add_many(GST_BIN(bin), audio_interpipe, audio_queue, audio_audioconvert, aacenc, rtpmp4apay, NULL);
+    gst_bin_add_many(GST_BIN(bin), audio_interpipe, audio_queue, audio_audioconvert, audio_buffer, aacenc, rtpmp4apay, NULL);
 
     // Link elements
     if (!gst_element_link_many(camera_interpipe, camera_queue, camera_videoconvert, camera_videoscale, camera_caps_filter, NULL))
@@ -333,7 +335,7 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
         GST_ERROR("Failed to link compositor elements!");
         return NULL;
     }
-    if (!gst_element_link_many(audio_interpipe, audio_queue, audio_audioconvert, aacenc, rtpmp4apay, NULL))
+    if (!gst_element_link_many(audio_interpipe, audio_queue, audio_audioconvert, audio_buffer, aacenc, rtpmp4apay, NULL))
     {
         GST_ERROR("Failed to link audio elements!");
         return NULL;
