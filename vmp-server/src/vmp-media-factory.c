@@ -176,6 +176,58 @@ static void vmp_media_factory_finalize(GObject *object)
 
 /*
  * Construct the combined video bin that composites the camera and presentation sources.
+ *
+ * Here is a diagram of the combined pipeline:
+ *
+ * Video, and audio streams are fetched from an external pipeline via intervideosrc, and interaudiosrc
+ * respectively. The capsfilter after the two videoscale elements configure the scaler according to the
+ * scaling configuration supplied as a property to the factory.
+ *
+ * The compositor element is used to combine the two video streams into a single output. Caps negotation
+ * between the two capsfilters and the compositor is done manually, after the initial pad linking is done.
+ * The coordinates of the two sub-streams in the compositor is configured via the compositor's sink pads
+ * (not in the simplified overview).
+ *
+ * After compositing, the output is configured with the capsfilter element, encoded and processed by the
+ * rtp element.
+ * The rtp*pay elements are responsible for encoding the video/audio into RTP packets (RFC 3984).
+ *
+ * To keep the audio channel synchronised, an additional queue is added between audioconvert and the
+ * encoding stage.
+ *
+ * Please note that the simplified diagram uses the default software encoders for simplicity.
+ *
+ * ┌───────────────────────┐
+ * │     intervideosrc     │     ┌───────┐    ┌────────────┐    ┌────────────┐    ┌────────────┐
+ * │                       │────▶│ Queue │───▶│videoconvert│───▶│ videoscale │───▶│ capsfilter │────┐
+ * │ channel=presentation  │     └───────┘    └────────────┘    └────────────┘    └────────────┘    │
+ * └───────────────────────┘                                                                        │
+ *                                                                                                  │
+ * ┌───────────────────────┐                                                                        │
+ * │     intervideosrc     │     ┌───────┐    ┌────────────┐    ┌────────────┐    ┌────────────┐    │
+ * │                       │────▶│ Queue │───▶│videoconvert│───▶│ videoscale │───▶│ capsfilter │────┤
+ * │    channel=camera     │     └───────┘    └────────────┘    └────────────┘    └────────────┘    │
+ * └───────────────────────┘                                                                        │
+ *                                                                                                  │
+ * ┌───────────────────────┐                                                                        │
+ * │     interaudiosrc     │     ┌───────┐    ┌────────────┐    ┌────────────┐    ┌────────────┐    │
+ * │                       │────▶│ Queue │───▶│audioconvert│───▶│   Queue    │───▶│  voaacenc  │──┐ │
+ * │     channel=audio     │     └───────┘    └────────────┘    └────────────┘    └────────────┘  │ │
+ * └───────────────────────┘                                                                      │ │
+ *                                                                       ┌─────────────────────┐  │ │
+ *                                                                       │     rtpmp4apay      │  │ │
+ *                                                                       │                     │  │ │
+ *                                                                       │      name=pay1      │◀─┘ │
+ *                                                                       │        pt=97        │    │
+ *                                                                       └─────────────────────┘    │
+ *                                                                                                  │
+ * ┌───────────────────────┐                                                                        │
+ * │      rtph264pay       │                                             ┌─────────────────────┐    │
+ * │                       │    ┌────────────┐      ┌────────────┐       │     Compositor      │    │
+ * │       name=pay0       │◀───│  x264enc   │◀─────│ capsfilter │◀──────│                     │◀───┘
+ * │         pt=96         │    └────────────┘      └────────────┘       │    background=1     │
+ * │                       │                                             └─────────────────────┘
+ * └───────────────────────┘
  */
 GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const GstRTSPUrl *url)
 {
