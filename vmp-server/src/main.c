@@ -5,6 +5,8 @@
  */
 
 #define DEFAULT_RTSP_PORT "8554"
+// TODO: Remove QT Mock from the project
+#define LOCATION "/Users/hugo/Movies/Herbie_Hancock_Cantaloupe_Island_Live_under_the_sky_91.mp4"
 
 #include <glib.h>
 #include <gst/rtsp-server/rtsp-server.h>
@@ -119,22 +121,17 @@ int main(int argc, char *argv[])
     }
     else
     {
+        gchar *aux_pipeline;
+
+        aux_pipeline = g_strdup_printf("filesrc location=%s  ! qtdemux name=demux "
+                                       "demux.video_0 ! queue ! decodebin ! videoconvert ! queue ! intervideosink channel=presentation "
+                                       "demux.audio_0 ! queue ! decodebin ! audioconvert ! capsfilter caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! audioresample ! queue ! interaudiosink channel=audio "
+                                       "videotestsrc pattern=green ! video/x-raw,width=480,height=270 ! queue ! intervideosink channel=camera",
+                                       LOCATION);
         // TODO: Proper auxillary pipeline state management
 
         /* Parse the pipeline description */
-        GstElement *pipeline1 = gst_parse_launch(
-            "audiotestsrc ! queue ! interaudiosink channel=audio",
-            &error);
-        if (error)
-        {
-            g_printerr("Failed to parse pipeline: %s\n", error->message);
-            g_error_free(error);
-            return -1;
-        }
-        /* Parse the pipeline description */
-        GstElement *pipeline2 = gst_parse_launch(
-            "videotestsrc ! queue ! intervideosink channel=presentation",
-            &error);
+        GstElement *pipeline1 = gst_parse_launch(aux_pipeline, &error);
         if (error)
         {
             g_printerr("Failed to parse pipeline: %s\n", error->message);
@@ -143,13 +140,12 @@ int main(int argc, char *argv[])
         }
 
         gst_element_set_state(pipeline1, GST_STATE_PLAYING);
-        gst_element_set_state(pipeline2, GST_STATE_PLAYING);
 
         // Currently interpipelinesink pipelines started externally
         start("camera", "presentation", "audio");
 
         g_object_unref(pipeline1);
-        g_object_unref(pipeline2);
+        g_free(aux_pipeline);
     }
 
     // Clean up
