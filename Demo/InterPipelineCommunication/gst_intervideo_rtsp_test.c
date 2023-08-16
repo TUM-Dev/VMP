@@ -70,7 +70,7 @@ int intervideo_test(int argc, char *argv[])
     /* Run the main loop */
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
 
-    g_print("RTSP Stream ready at rtsp://127.0.0.1:8554\n");
+    g_print("RTSP Stream ready at rtsp://127.0.0.1:8554/test\n");
 
     g_main_loop_run(loop);
 
