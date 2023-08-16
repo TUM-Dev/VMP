@@ -8,6 +8,7 @@
 #define VMP_MEDIA_FACTORY_H
 
 #include <gst/rtsp-server/rtsp-media-factory.h>
+#include "vmp-video-config.h"
 
 G_BEGIN_DECLS
 
@@ -26,7 +27,9 @@ struct _VMPMediaFactory
     GstRTSPMediaFactory parent;
 };
 
-VMPMediaFactory *vmp_media_factory_new(GstElement *element);
+VMPMediaFactory *vmp_media_factory_new(gchar *camera_interpipe_name, gchar *presentation_interpipe_name, gchar *audio_interpipe_name,
+                                       VMPVideoConfig *output_configuration, VMPVideoConfig *camera_configuration,
+                                       VMPVideoConfig *presentation_configuration);
 
 G_END_DECLS
 

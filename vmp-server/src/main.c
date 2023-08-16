@@ -16,7 +16,6 @@
 
 // For setting up the RTSP server
 #include "vmp-media-factory.h"
-#include "vmp-combined-bin.h"
 #include "vmp-video-config.h"
 
 // For error handling
@@ -30,7 +29,7 @@ GOptionEntry entries[] = {
     {NULL}};
 
 // Forward declarations
-static void start(GstElement *camera, GstElement *presentation, GstElement *audio);
+static void start(gchar *camera_interpipe_name, gchar *presentation_interpipe_name, gchar *audio_interpipe_name);
 
 static void check_v4l2_device(gchar *device, GError **error)
 {
@@ -120,11 +119,37 @@ int main(int argc, char *argv[])
     }
     else
     {
-        GstElement *camera_mock = gst_element_factory_make("videotestsrc", "camera_videotestsrc");
-        GstElement *presentation_mock = gst_element_factory_make("videotestsrc", "presentation_videotestsrc");
-        GstElement *audio_mock = gst_element_factory_make("audiotestsrc", "audiotestsrc");
+        // TODO: Proper auxillary pipeline state management
 
-        start(camera_mock, presentation_mock, audio_mock);
+        /* Parse the pipeline description */
+        GstElement *pipeline1 = gst_parse_launch(
+            "audiotestsrc ! queue ! interaudiosink channel=audio",
+            &error);
+        if (error)
+        {
+            g_printerr("Failed to parse pipeline: %s\n", error->message);
+            g_error_free(error);
+            return -1;
+        }
+        /* Parse the pipeline description */
+        GstElement *pipeline2 = gst_parse_launch(
+            "videotestsrc ! queue ! intervideosink channel=presentation",
+            &error);
+        if (error)
+        {
+            g_printerr("Failed to parse pipeline: %s\n", error->message);
+            g_error_free(error);
+            return -1;
+        }
+
+        gst_element_set_state(pipeline1, GST_STATE_PLAYING);
+        gst_element_set_state(pipeline2, GST_STATE_PLAYING);
+
+        // Currently interpipelinesink pipelines started externally
+        start("camera", "presentation", "audio");
+
+        g_object_unref(pipeline1);
+        g_object_unref(pipeline2);
     }
 
     // Clean up
@@ -136,33 +161,30 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-static void start(GstElement *camera, GstElement *presentation, GstElement *audio)
+static void start(gchar *camera_interpipe_name, gchar *presentation_interpipe_name, gchar *audio_interpipe_name)
 {
     GstRTSPServer *server;
     GstRTSPMountPoints *mounts;
     VMPMediaFactory *factory;
+    // GstRTSPMediaFactory *factory;
 
     server = gst_rtsp_server_new();
     g_object_set(server, "service", DEFAULT_RTSP_PORT, NULL);
 
     mounts = gst_rtsp_server_get_mount_points(server);
 
-    // Create a dummy pipeline
-
     VMPVideoConfig *camera_config = vmp_video_config_new(480, 270);
     VMPVideoConfig *presentation_config = vmp_video_config_new(1440, 810);
     VMPVideoConfig *output_config = vmp_video_config_new(1920, 1080);
 
-    // TODO: Do explicit GError handling here
-    GstElement *element = GST_ELEMENT(vmp_combined_bin_new(output_config, camera, camera_config, presentation, presentation_config, audio));
+    // Initialise the custom rtsp media factory for managing our own pipeline
+    factory = vmp_media_factory_new(camera_interpipe_name, presentation_interpipe_name, audio_interpipe_name, output_config, camera_config, presentation_config);
+    gst_rtsp_media_factory_set_shared(GST_RTSP_MEDIA_FACTORY(factory), TRUE);
 
-    // Full transfer to VMPCombinedBin
+    // Full transfer to VMPMediaFactory
     g_object_unref(camera_config);
     g_object_unref(presentation_config);
     g_object_unref(output_config);
-
-    // Initialise the custom rtsp media factory for managing our own pipeline
-    factory = vmp_media_factory_new(element);
 
     // attach the test factory to the /comb url
     gst_rtsp_mount_points_add_factory(mounts, "/comb", GST_RTSP_MEDIA_FACTORY(factory));
