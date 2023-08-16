@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
+/* vmp-media-factory: A Subclass of the GSTRTSPMediaFactory for compositing the combined stream
+ */
+
 #include <gst/gst.h>
 #include "vmp-media-factory.h"
 
@@ -32,6 +35,7 @@ static GParamSpec *obj_properties[N_PROPERTIES] = {
 
 typedef struct _VMPMediaFactoryPrivate
 {
+    // Channel names for the intervideo and interaudio communication
     gchar *camera_interpipe_name;
     gchar *presentation_interpipe_name;
     gchar *audio_interpipe_name;
@@ -177,6 +181,10 @@ static void vmp_media_factory_finalize(GObject *object)
 /*
  * Construct the combined video bin that composites the camera and presentation sources.
  *
+ * When the media_factory is set to 'shared', the element created for the first connection
+ * is reused for all other connections. When no active connection is available, a new bin
+ * is created.
+ *
  * Here is a diagram of the combined pipeline:
  *
  * Video, and audio streams are fetched from an external pipeline via intervideosrc, and interaudiosrc
@@ -266,36 +274,35 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
     g_return_val_if_fail(priv->camera_configuration, NULL);
     g_return_val_if_fail(priv->presentation_configuration, NULL);
 
+    // Configure the presentation stream elements
     presentation_interpipe = gst_element_factory_make("intervideosrc", "presentation_interpipe");
     presentation_queue = gst_element_factory_make("queue", "presentation_queue");
     presentation_videoconvert = gst_element_factory_make("videoconvert", "presentation_videoconvert");
     presentation_videoscale = gst_element_factory_make("videoscale", "presentation_videoscale");
     presentation_caps_filter = gst_element_factory_make("capsfilter", "presentation_capsfilter");
-
     if (!presentation_interpipe || !presentation_queue || !presentation_videoconvert || !presentation_videoscale || !presentation_caps_filter)
     {
         GST_ERROR("Failed to create elements required for presentation stream processing");
         return NULL;
     }
 
+    // Configure the camera stream elements
     camera_interpipe = gst_element_factory_make("intervideosrc", "camera_interpipe");
     camera_queue = gst_element_factory_make("queue", "camera_queue");
     camera_videoconvert = gst_element_factory_make("videoconvert", "camera_videoconvert");
     camera_videoscale = gst_element_factory_make("videoscale", "camera_videoscale");
     camera_caps_filter = gst_element_factory_make("capsfilter", "camera_capsfilter");
-
     if (!camera_interpipe || !camera_queue || !camera_videoconvert || !camera_videoscale || !camera_caps_filter)
     {
         GST_ERROR("Failed to create elements required for camera stream processing");
         return NULL;
     }
 
+    // Configure the audio stream elements
     audio_interpipe = gst_element_factory_make("interaudiosrc", "audio_interpipe");
     audio_queue = gst_element_factory_make("queue", "audio_queue");
     audio_audioconvert = gst_element_factory_make("audioconvert", "audio_audioconvert");
-    // TODO: Do we need an audioresampler?
     GstElement *audio_buffer = gst_element_factory_make("queue", "audio_buffer");
-
     if (!audio_interpipe || !audio_queue || !audio_audioconvert || !audio_buffer)
     {
         GST_ERROR("Failed to create elements required for audio stream processing");
@@ -310,7 +317,6 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
     aacenc = gst_element_factory_make("voaacenc", "aacenc");
     rtph264pay = gst_element_factory_make("rtph264pay", "pay0");
     rtpmp4apay = gst_element_factory_make("rtpmp4apay", "pay1");
-
     if (!compositor || !compositor_caps_filter || !x264enc || !aacenc || !rtph264pay || !rtpmp4apay)
     {
         GST_ERROR("Failed to create elements required for compositing and output stream processing");
@@ -335,7 +341,8 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
     g_object_set(audio_interpipe, "channel", priv->audio_interpipe_name, NULL);
 
     /*
-     * Build Caps from VMPVideoConfiguration
+     * Build Caps from VMPVideoConfiguration.
+     * This is used by the scaler to scale the stream accordingly.
      */
     GstCaps *compositor_caps;
     GstCaps *presentation_caps;
@@ -422,6 +429,7 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
         return NULL;
     }
 
+    // Configure the positions of the streams
     gint camera_pad_width = vmp_video_config_get_width(priv->output_configuration) - vmp_video_config_get_width(priv->camera_configuration);
     g_object_set(G_OBJECT(sink_camera_pad), "xpos", camera_pad_width, NULL);
     g_object_set(G_OBJECT(sink_camera_pad), "ypos", 0, NULL);
