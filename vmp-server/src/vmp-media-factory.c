@@ -236,6 +236,17 @@ static void vmp_media_factory_finalize(GObject *object)
  * │         pt=96         │    └────────────┘      └────────────┘       │    background=1     │
  * │                       │                                             └─────────────────────┘
  * └───────────────────────┘
+ *
+ * When using the Nvidia hardware encoder, the pipeline is slightly different:
+ * We need to use nvvidconv to map the buffers to NVMM memory, required by the hardware encoder (nvv4l2h264enc).
+ *
+ * ┌───────────────────────┐
+ * │      rtph264pay       │                                                          ┌─────────────────────┐
+ * │                       │   ┌───────────────┐   ┌────────────┐    ┌────────────┐   │     Compositor      │
+ * │       name=pay0       │◀──│ nvv4l2h264enc │◀──│ nvvidconv  │◀───│ capsfilter │◀──│                     │
+ * │         pt=96         │   └───────────────┘   └────────────┘    └────────────┘   │    background=1     │
+ * │                       │                                                          └─────────────────────┘
+ * └───────────────────────┘
  */
 GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const GstRTSPUrl *url)
 {
@@ -337,7 +348,6 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
     }
 
     // Set properties of x264enc
-    g_object_set(G_OBJECT(x264enc), "bitrate", 5000000, NULL);
     g_object_set(G_OBJECT(x264enc), "maxperf-enable", 1, NULL);
 #else
     x264enc = gst_element_factory_make("x264enc", "x264enc");
@@ -347,6 +357,7 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
         return NULL;
     }
 #endif
+    g_object_set(G_OBJECT(x264enc), "bitrate", 5000000, NULL);
 
     // Set properties of compositor
     g_object_set(G_OBJECT(compositor), "background", 1, NULL);
