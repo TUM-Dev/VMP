@@ -1,0 +1,11 @@
+# vmp-http-spec - OpenAPI Specification for the vmp-server HTTP interface
+# Copyright (C) 2023 Hugo Melder
+# 
+# SPDX-License-Identifier: MIT
+
+GenericError:
+  $ref: './ErrorResponse.yml'
+LoginRequest:
+  $ref: './LoginRequest.yml'
+LoginResponse:
+  $ref: './LoginResponse.yml'
