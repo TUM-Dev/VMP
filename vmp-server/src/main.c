@@ -6,7 +6,7 @@
 
 #define DEFAULT_RTSP_PORT "8554"
 // TODO: Remove QT Mock from the project
-#define LOCATION "/Users/hugo/Movies/Herbie_Hancock_Cantaloupe_Island_Live_under_the_sky_91.mp4"
+#define LOCATION "/Users/hugo/Downloads/blade_runner.mp4"
 
 #include <glib.h>
 #include <gst/rtsp-server/rtsp-server.h>
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
         aux_pipeline = g_strdup_printf("filesrc location=%s  ! qtdemux name=demux "
                                        "demux.video_0 ! queue ! decodebin ! videoconvert ! queue ! intervideosink channel=presentation "
                                        "demux.audio_0 ! queue ! decodebin ! audioconvert ! capsfilter caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! audioresample ! queue ! interaudiosink channel=audio "
-                                       "videotestsrc pattern=green ! video/x-raw,width=480,height=270 ! queue ! intervideosink channel=camera",
+                                       "videotestsrc pattern=smpte ! video/x-raw,width=480,height=270 ! queue ! intervideosink channel=camera",
                                        LOCATION);
         // TODO: Proper auxillary pipeline state management
 
@@ -177,6 +177,10 @@ static void start(gchar *camera_interpipe_name, gchar *presentation_interpipe_na
     factory = vmp_media_factory_new(camera_interpipe_name, presentation_interpipe_name, audio_interpipe_name, output_config, camera_config, presentation_config);
     gst_rtsp_media_factory_set_shared(GST_RTSP_MEDIA_FACTORY(factory), TRUE);
 
+    GstRTSPMediaFactory *fac2 = gst_rtsp_media_factory_new();
+    gst_rtsp_media_factory_set_launch(fac2, "intervideosrc channel=presentation ! queue ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96 "
+                                            "interaudiosrc channel=audio ! queue ! audioconvert ! queue ! voaacenc ! rtpmp4apay name=pay1 pt=97");
+
     // Full transfer to VMPMediaFactory
     g_object_unref(camera_config);
     g_object_unref(presentation_config);
@@ -184,6 +188,7 @@ static void start(gchar *camera_interpipe_name, gchar *presentation_interpipe_na
 
     // attach the test factory to the /comb url
     gst_rtsp_mount_points_add_factory(mounts, "/comb", GST_RTSP_MEDIA_FACTORY(factory));
+    gst_rtsp_mount_points_add_factory(mounts, "/presentation", fac2);
 
     g_object_unref(mounts);
     /* attach the server to the default maincontext */
