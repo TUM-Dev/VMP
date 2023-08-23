@@ -123,11 +123,9 @@ int main(int argc, char *argv[])
     {
         gchar *aux_pipeline;
 
-        aux_pipeline = g_strdup_printf("filesrc location=%s  ! qtdemux name=demux "
-                                       "demux.video_0 ! queue ! decodebin ! videoconvert ! queue ! intervideosink channel=presentation "
-                                       "demux.audio_0 ! queue ! decodebin ! audioconvert ! capsfilter caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! audioresample ! queue ! interaudiosink channel=audio "
-                                       "videotestsrc pattern=smpte ! video/x-raw,width=480,height=270 ! queue ! intervideosink channel=camera",
-                                       LOCATION);
+        aux_pipeline = g_strdup_printf(
+            "v4l2src ! queue ! videoconvert ! queue ! intervideosink channel=presentation "
+            "videotestsrc pattern=smpte ! video/x-raw,width=480,height=270 ! queue ! intervideosink channel=camera");
         // TODO: Proper auxillary pipeline state management
 
         /* Parse the pipeline description */
@@ -166,6 +164,7 @@ static void start(gchar *camera_interpipe_name, gchar *presentation_interpipe_na
 
     server = gst_rtsp_server_new();
     g_object_set(server, "service", DEFAULT_RTSP_PORT, NULL);
+    g_object_set(server, "address", "0.0.0.0", NULL);
 
     mounts = gst_rtsp_server_get_mount_points(server);
 
