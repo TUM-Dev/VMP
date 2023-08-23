@@ -123,11 +123,9 @@ int main(int argc, char *argv[])
     {
         gchar *aux_pipeline;
 
-        aux_pipeline = g_strdup_printf("filesrc location=%s  ! qtdemux name=demux "
-                                       "demux.video_0 ! queue ! decodebin ! videoconvert ! queue ! intervideosink channel=presentation "
-                                       "demux.audio_0 ! queue ! decodebin ! audioconvert ! capsfilter caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! audioresample ! queue ! interaudiosink channel=audio "
-                                       "videotestsrc pattern=smpte ! video/x-raw,width=480,height=270 ! queue ! intervideosink channel=camera",
-                                       LOCATION);
+        aux_pipeline = g_strdup_printf(
+            "v4l2src ! queue ! videoconvert ! queue ! intervideosink channel=presentation "
+            "videotestsrc pattern=green ! video/x-raw,width=480,height=270 ! queue ! intervideosink channel=camera");
         // TODO: Proper auxillary pipeline state management
 
         /* Parse the pipeline description */
@@ -162,10 +160,12 @@ static void start(gchar *camera_interpipe_name, gchar *presentation_interpipe_na
     GstRTSPServer *server;
     GstRTSPMountPoints *mounts;
     VMPMediaFactory *factory;
-    // GstRTSPMediaFactory *factory;
+    GstRTSPMediaFactory *factoryPresentation;
+    GstRTSPMediaFactory *factoryCamera;
 
     server = gst_rtsp_server_new();
     g_object_set(server, "service", DEFAULT_RTSP_PORT, NULL);
+    g_object_set(server, "address", "0.0.0.0", NULL);
 
     mounts = gst_rtsp_server_get_mount_points(server);
 
@@ -177,9 +177,22 @@ static void start(gchar *camera_interpipe_name, gchar *presentation_interpipe_na
     factory = vmp_media_factory_new(camera_interpipe_name, presentation_interpipe_name, audio_interpipe_name, output_config, camera_config, presentation_config);
     gst_rtsp_media_factory_set_shared(GST_RTSP_MEDIA_FACTORY(factory), TRUE);
 
-    GstRTSPMediaFactory *fac2 = gst_rtsp_media_factory_new();
-    gst_rtsp_media_factory_set_launch(fac2, "intervideosrc channel=presentation ! queue ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96 "
-                                            "interaudiosrc channel=audio ! queue ! audioconvert ! queue ! voaacenc ! rtpmp4apay name=pay1 pt=97");
+    factoryCamera = gst_rtsp_media_factory_new();
+    factoryPresentation = gst_rtsp_media_factory_new();
+
+    gst_rtsp_media_factory_set_shared(factoryCamera, TRUE);
+    gst_rtsp_media_factory_set_shared(factoryPresentation, TRUE);
+
+#ifdef NV_JETSON
+    g_print("Using Jetson hardware encoder\n");
+    gst_rtsp_media_factory_set_launch(factoryPresentation, "intervideosrc channel=presentation ! queue ! nvvidconv ! video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080 ! nvv4l2h264enc maxperf-enable=1 bitrate=5000000 ! rtph264pay name=pay0 pt=96 "
+                                                           "interaudiosrc channel=audio ! queue ! audioconvert ! queue ! voaacenc ! rtpmp4apay name=pay1 pt=97");
+    gst_rtsp_media_factory_set_launch(factoryCamera, "intervideosrc channel=camera ! queue ! nvvidconv ! video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080 ! nvv4l2h264enc maxperf-enable=1 bitrate=5000000 ! rtph264pay name=pay0 pt=96 "
+                                                     "interaudiosrc channel=audio ! queue ! audioconvert ! queue ! voaacenc ! rtpmp4apay name=pay1 pt=97");
+#else
+    gst_rtsp_media_factory_set_launch(factoryPresentation, "intervideosrc channel=presentation ! queue ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96 "
+                                                           "interaudiosrc channel=audio ! queue ! audioconvert ! queue ! voaacenc ! rtpmp4apay name=pay1 pt=97");
+#endif
 
     // Full transfer to VMPMediaFactory
     g_object_unref(camera_config);
@@ -188,7 +201,8 @@ static void start(gchar *camera_interpipe_name, gchar *presentation_interpipe_na
 
     // attach the test factory to the /comb url
     gst_rtsp_mount_points_add_factory(mounts, "/comb", GST_RTSP_MEDIA_FACTORY(factory));
-    gst_rtsp_mount_points_add_factory(mounts, "/presentation", fac2);
+    gst_rtsp_mount_points_add_factory(mounts, "/presentation", factoryPresentation);
+    gst_rtsp_mount_points_add_factory(mounts, "/camera", factoryCamera);
 
     g_object_unref(mounts);
     /* attach the server to the default maincontext */

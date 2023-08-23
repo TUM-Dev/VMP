@@ -236,6 +236,17 @@ static void vmp_media_factory_finalize(GObject *object)
  * │         pt=96         │    └────────────┘      └────────────┘       │    background=1     │
  * │                       │                                             └─────────────────────┘
  * └───────────────────────┘
+ *
+ * When using the Nvidia hardware encoder, the pipeline is slightly different:
+ * We need to use nvvidconv to map the buffers to NVMM memory, required by the hardware encoder (nvv4l2h264enc).
+ *
+ * ┌───────────────────────┐
+ * │      rtph264pay       │                                                          ┌─────────────────────┐
+ * │                       │   ┌───────────────┐   ┌────────────┐    ┌────────────┐   │     Compositor      │
+ * │       name=pay0       │◀──│ nvv4l2h264enc │◀──│ nvvidconv  │◀───│ capsfilter │◀──│                     │
+ * │         pt=96         │   └───────────────┘   └────────────┘    └────────────┘   │    background=1     │
+ * │                       │                                                          └─────────────────────┘
+ * └───────────────────────┘
  */
 GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const GstRTSPUrl *url)
 {
@@ -262,6 +273,11 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
     GstElement *compositor_caps_filter;
     GstElement *aacenc, *x264enc;
     GstElement *rtph264pay, *rtpmp4apay;
+
+    // Nvidia Jetson specific elements
+#ifdef NV_JETSON
+    GstElement *nvvidconv;
+#endif
 
     priv = vmp_media_factory_get_instance_private(VMP_MEDIA_FACTORY(factory));
     bin = GST_BIN(gst_bin_new("combined_bin"));
@@ -311,17 +327,37 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
 
     compositor = gst_element_factory_make("compositor", "compositor");
     compositor_caps_filter = gst_element_factory_make("capsfilter", "compositor_capsfilter");
-
-    // TODO: Conditionally use Nvidia NVENC when on Jetson hardware
-    x264enc = gst_element_factory_make("x264enc", "x264enc");
-    aacenc = gst_element_factory_make("voaacenc", "aacenc");
+    aacenc = gst_element_factory_make("avenc_aac", "aacenc");
     rtph264pay = gst_element_factory_make("rtph264pay", "pay0");
     rtpmp4apay = gst_element_factory_make("rtpmp4apay", "pay1");
-    if (!compositor || !compositor_caps_filter || !x264enc || !aacenc || !rtph264pay || !rtpmp4apay)
+
+    if (!compositor || !compositor_caps_filter || !aacenc || !rtph264pay || !rtpmp4apay)
     {
         GST_ERROR("Failed to create elements required for compositing and output stream processing");
         return NULL;
     }
+
+#ifdef NV_JETSON
+    // Nvidia video buffer convert
+    nvvidconv = gst_element_factory_make("nvvidconv", NULL);
+    // Nvidia h264 hardware encoder
+    x264enc = gst_element_factory_make("nvv4l2h264enc", "x264enc");
+    if (!nvvidconv || !x264enc)
+    {
+        GST_ERROR("Failed to create elements required for Nvidia hardware encoding");
+        return NULL;
+    }
+
+    g_object_set(G_OBJECT(x264enc), "maxperf-enable", 1, NULL);
+#else
+    x264enc = gst_element_factory_make("x264enc", "x264enc");
+    if (!x264enc)
+    {
+        GST_ERROR("Failed to create elements required for software encoding");
+        return NULL;
+    }
+#endif
+    g_object_set(G_OBJECT(x264enc), "bitrate", 5000000, NULL);
 
     // Set properties of compositor
     g_object_set(G_OBJECT(compositor), "background", 1, NULL);
@@ -378,6 +414,10 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
     gst_bin_add_many(GST_BIN(bin), compositor, compositor_caps_filter, x264enc, rtph264pay, NULL);
     gst_bin_add_many(GST_BIN(bin), audio_interpipe, audio_queue, audio_audioconvert, audio_buffer, aacenc, rtpmp4apay, NULL);
 
+#ifdef NV_JETSON
+    gst_bin_add_many(GST_BIN(bin), nvvidconv, NULL);
+#endif
+
     // Link elements
     if (!gst_element_link_many(camera_interpipe, camera_queue, camera_videoconvert, camera_videoscale, camera_caps_filter, NULL))
     {
@@ -389,11 +429,21 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
         GST_ERROR("Failed to link presentation elements!");
         return NULL;
     }
+
+#ifdef NV_JETSON
+    if (!gst_element_link_many(compositor, compositor_caps_filter, nvvidconv, x264enc, rtph264pay, NULL))
+    {
+        GST_ERROR("Failed to link compositor elements!");
+        return NULL;
+    }
+#else
     if (!gst_element_link_many(compositor, compositor_caps_filter, x264enc, rtph264pay, NULL))
     {
         GST_ERROR("Failed to link compositor elements!");
         return NULL;
     }
+#endif
+
     if (!gst_element_link_many(audio_interpipe, audio_queue, audio_audioconvert, audio_buffer, aacenc, rtpmp4apay, NULL))
     {
         GST_ERROR("Failed to link audio elements!");
