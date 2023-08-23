@@ -164,4 +164,5 @@ compile_commands.json
 .ionide
 
 # Build Artefacts
-vsmp-server/build/
+vmp-server/build/
+vmp-http-spec/vmp-http-spec.json
