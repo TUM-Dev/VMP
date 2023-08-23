@@ -274,6 +274,7 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
     GstElement *aacenc, *x264enc;
     GstElement *rtph264pay, *rtpmp4apay;
 
+    // Nvidia Jetson specific elements
 #ifdef NV_JETSON
     GstElement *nvvidconv;
 #endif
@@ -347,7 +348,6 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
         return NULL;
     }
 
-    // Set properties of x264enc
     g_object_set(G_OBJECT(x264enc), "maxperf-enable", 1, NULL);
 #else
     x264enc = gst_element_factory_make("x264enc", "x264enc");
