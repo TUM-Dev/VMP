@@ -5,7 +5,7 @@
 
 type: object
 title: GenericError
-description: Generic error response. The error object itself is encapsulated to ensure JSON parsing with static parsers (e.g. golang json marshaling).
+description: A generic error response.
 required:
   - error
 properties:
@@ -19,6 +19,7 @@ properties:
       code:
         description: An error code that is unique to a specific error.
         type: integer
+        format: int32
       msg:
         description: The human-readable error message.
         type: string

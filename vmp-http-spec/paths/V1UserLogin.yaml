@@ -1,0 +1,45 @@
+# vmp-http-spec - OpenAPI Specification for the vmp-server HTTP interface
+# Copyright (C) 2023 Hugo Melder
+# 
+# SPDX-License-Identifier: MIT
+
+post:
+  tags:
+    - Authentication
+  description: >
+    This endpoint returns a JWT token which can be used to authenticate against other endpoints.
+    The user must be registered for the authentication to succeed.
+    The token is valid for 24 hours.
+  security:
+    - {}
+  requestBody:
+    description: The request body contains the credentials of the user and is formatted as a JSON object.
+    content:
+      application/json:
+        schema:
+          $ref: '../components/schemas/UserLoginRequest.yaml'
+        examples:
+          Default:
+            value:
+              $ref: '../components/examples/UserLoginDefaultRequest.yaml'
+  responses:
+    '200':
+      description: The user has been successfully authenticated. The corresponding JWT token is in the response body.
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/UserLoginResponse.yaml'
+          examples:
+            Default:
+              value:
+                $ref: '../components/examples/UserLoginDefaultResponse.yaml'
+    '404':
+      description: The user could not be found.
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/GenericError.yaml'
+          examples:
+            Default:
+              value:
+                $ref: '../components/examples/UserLoginDefaultNotFoundResponse.yaml'

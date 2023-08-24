@@ -1,0 +1,29 @@
+# vmp-http-spec - OpenAPI Specification for the vmp-server HTTP interface
+# Copyright (C) 2023 Hugo Melder
+# 
+# SPDX-License-Identifier: MIT
+
+openapi: 3.1.0
+info:
+  version: 1.0.0
+  title: VMP Control API
+  description: >-
+    This is the VMP HTTP API specification. It defines a set of endpoints that can be
+    used to get, and control the state of the VMP server.
+  contact:
+    name: Hugo Melder
+    email: contact@hugomelder.com
+  license:
+    name: MIT
+    url: https://opensource.org/license/mit
+paths:
+  /v1/user/login:
+    $ref: paths/V1UserLogin.yaml
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []
