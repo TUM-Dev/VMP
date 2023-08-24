@@ -1,0 +1,28 @@
+# vmp-http-spec - OpenAPI Specification for the vmp-server HTTP interface
+# Copyright (C) 2023 Hugo Melder
+# 
+# SPDX-License-Identifier: MIT
+
+# [START] StatusDefaultResponse
+{
+  "server": {
+    "version": "0.0.1",
+    "channel": "DEV"
+  },
+  "rtsp": {
+    "address": "0.0.0.0",
+    "port": "8554",
+    "mountpoints": [
+      {
+      "key": "comb",
+      "value": "pipeline0"
+      },
+      {
+        "key": "camera",
+        "value": "pipeline1"
+      }
+    ]
+  },
+  "systemStatus": "AVAILABLE"
+}
+# [END] StatusDefaultResponse

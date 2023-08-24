@@ -1,0 +1,22 @@
+# vmp-http-spec - OpenAPI Specification for the vmp-server HTTP interface
+# Copyright (C) 2023 Hugo Melder
+# 
+# SPDX-License-Identifier: MIT
+
+get:
+  description: "Get the status of the server"
+  tags:
+    - "Status"
+  responses:
+    '200':
+      description: "The request was successful"
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas/StatusResponse.yaml"
+          examples:
+            Default:
+              value:
+                $ref: "../components/examples/StatusDefaultResponse.yaml"
+    '401':
+      $ref: "./fragments/UnauthorizedFragment.yaml"
