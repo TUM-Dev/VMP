@@ -1,0 +1,53 @@
+# vmp-http-spec - OpenAPI Specification for the vmp-server HTTP interface
+# Copyright (C) 2023 Hugo Melder
+# 
+# SPDX-License-Identifier: MIT
+
+get:
+  description: >
+    This endpoint returns a list of all active and inactive pipelines.
+    We differentiate between ingress and egress pipelines.
+
+    Ingress pipelines are internal pipelines which are used to ingest data into
+    the rtsp server.
+
+    Egress pipelines process one or multiple streams from ingress pipelines and
+    expose the processed stream(s).
+
+    The user must be authenticated for the request to succeed.
+  tags:
+    - Pipelines
+  parameters:
+      - name: filter
+        in: query
+        description: Filter the pipelines by status.
+        required: false
+        schema:
+          type: string
+          enum:
+            - active
+            - inactive
+            - all
+  responses:
+    '200':
+      description: The request was successful. The response body contains a list of pipelines.
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/PipelineListResponse.yaml'
+    '401':
+      description: > 
+        The user is not authenticated.
+        Possible error codes:
+          - 10001: Invalid JWT token
+          - 10002: JWT token expired
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/GenericError.yaml'
+          examples:
+            Default:
+              value:
+                $ref: '../components/examples/DefaultUnauthorizedResponse.yaml'
+    
+  

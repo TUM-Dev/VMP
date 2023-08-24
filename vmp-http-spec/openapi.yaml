@@ -3,7 +3,7 @@
 # 
 # SPDX-License-Identifier: MIT
 
-openapi: 3.1.0
+openapi: 3.0.0
 info:
   version: 1.0.0
   title: VMP Control API
@@ -19,6 +19,8 @@ info:
 paths:
   /v1/user/login:
     $ref: paths/V1UserLogin.yaml
+  /v1/pipelines:
+    $ref: paths/V1Pipelines.yaml
 components:
   securitySchemes:
     bearerAuth:

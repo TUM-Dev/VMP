@@ -1,0 +1,23 @@
+# vmp-http-spec - OpenAPI Specification for the vmp-server HTTP interface
+# Copyright (C) 2023 Hugo Melder
+# 
+# SPDX-License-Identifier: MIT
+
+type: object
+title: PipelineSelection
+description: List of pipelines.
+required:
+  - numberOfIngressPipelines
+  - numberOfEgressPipelines
+  - pipelines
+properties:
+  numberOfIngressPipelines:
+    type: integer
+    description: Number of ingress pipelines.
+  numberOfEgressPipelines:
+    type: integer
+    description: Number of egress pipelines.
+  pipelines:
+    type: array
+    items:
+      $ref: './PipelineItem.yaml'

@@ -34,7 +34,10 @@ post:
               value:
                 $ref: '../components/examples/UserLoginDefaultResponse.yaml'
     '404':
-      description: The user could not be found.
+      description: > 
+        The user could not be found.
+        Possible error codes:
+          - 10011: User not found and/or password invalid
       content:
         application/json:
           schema:
