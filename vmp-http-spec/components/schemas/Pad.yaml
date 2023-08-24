@@ -25,9 +25,9 @@ properties:
       - UNKNOWN
       - SRC
       - SINK
-    isLinked:
-      type: boolean
-      description: Is the pad linked.
-    linkedElement:
-      type: string
-      description: Element (ID) linked to the pad. Object only present when isLinked is true.
+  isLinked:
+    type: boolean
+    description: Is the pad linked.
+  linkedElement:
+    type: string
+    description: Element (ID) linked to the pad. Object only present when isLinked is true.
