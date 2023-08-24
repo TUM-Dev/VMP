@@ -36,18 +36,4 @@ get:
           schema:
             $ref: '../components/schemas/PipelineListResponse.yaml'
     '401':
-      description: > 
-        The user is not authenticated.
-        Possible error codes:
-          - 10001: Invalid JWT token
-          - 10002: JWT token expired
-      content:
-        application/json:
-          schema:
-            $ref: '../components/schemas/GenericError.yaml'
-          examples:
-            Default:
-              value:
-                $ref: '../components/examples/DefaultUnauthorizedResponse.yaml'
-    
-  
+      $ref: './fragments/UnauthorizedFragment.yaml'

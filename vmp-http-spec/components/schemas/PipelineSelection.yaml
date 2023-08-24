@@ -20,4 +20,4 @@ properties:
   pipelines:
     type: array
     items:
-      $ref: './PipelineItem.yaml'
+      $ref: './Pipeline.yaml'

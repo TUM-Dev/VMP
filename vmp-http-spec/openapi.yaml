@@ -21,6 +21,8 @@ paths:
     $ref: paths/V1UserLogin.yaml
   /v1/pipelines:
     $ref: paths/V1Pipelines.yaml
+  /v1/bin:
+    $ref: paths/V1Bin.yaml
 components:
   securitySchemes:
     bearerAuth:

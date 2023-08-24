@@ -11,7 +11,7 @@ required:
   - friendlyName
   - description
   - pipelineId
-  - bin
+  - element_id
   - state
 properties:
   type:
@@ -29,7 +29,7 @@ properties:
   pipelineId:
     type: integer
     description: ID of the pipeline.
-  bin:
+  element_id:
     type: string
     description: Gstreamer bin of the pipeline.
   state:
