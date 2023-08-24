@@ -3,9 +3,9 @@
 # 
 # SPDX-License-Identifier: MIT
 
-# [START] LoginDefaultRequest
+# [START] UserLoginDefaultRequest
 {
   "username": "admin",
   "password": "admin"
 }
-# [END] LoginDefaultRequest
+# [END] UserLoginDefaultRequest
