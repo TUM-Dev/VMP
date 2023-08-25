@@ -2,14 +2,19 @@
 
 This subproject implements the core of the VMP: The RTSP Server, and a HTTP Server for status updates. 
 
-## Issues
-- RTSP Media Reuse broken
 
-## TODO
-- Single Camera, and presentation View
-- Use IPC (interpipe) to avoid reencoding for each pipeline that serves a mountpoint
-- CLI Parsing, Default Configuration, and Daemon Configuration
+## IN PROGRESS
+- V4L2 Device Monitoring and Pipeline Restart Mechanism
 - Centralised Logging (Preparation for HTTP API)
 - HTTP API
-- Hardware Specific Encoder Selection
+
+## DONE
+- RTSP Media Reuse
+- Single Camera, and presentation View
+- Use IPC (interpipe) to avoid reencoding for each pipeline that serves a mountpoint
+- CLI Parsing 
 - V4L2 Device Detection
+- Hardware Specific Encoder Selection
+
+## TODO
+- Default Configuration, and Daemon Configuration
