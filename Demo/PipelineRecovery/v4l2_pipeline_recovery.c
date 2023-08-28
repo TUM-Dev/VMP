@@ -79,6 +79,7 @@ static void on_uevent(GUdevClient *client,
         return;
     }
 
+    // FIXME: Coordinate between GStreamer Message Bus and UDev Monitor to avoid possible transition from playing -> null
     if (g_strcmp0(devpath, con->device) == 0)
     {
         g_printf("Processing event for registered device %s ...\n", con->device);
