@@ -10,7 +10,7 @@
 #include <glib-object.h>
 
 #define VMP_TYPE_PIPELINE_MANAGER (vmp_pipeline_manager_get_type())
-G_DECLARE_DERIVABLE_TYPE(VMPPipelineManager, vmp_pipeline_manager, VMP, PIPELINE_MANAGER, GObject)
+G_DECLARE_FINAL_TYPE(VMPPipelineManager, vmp_pipeline_manager, VMP, PIPELINE_MANAGER, GObject)
 
 struct _VMPPipelineManager
 {
