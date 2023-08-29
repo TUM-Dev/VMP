@@ -21,6 +21,12 @@ if fs.exists('/proc/device-tree/model')
     endif
 endif
 
-source = ['src/main.c', 'src/vmp-media-factory.c', 'src/vmp-video-config.c', 'src/vmp-error.c', 'src/vmp-pipeline-manager.c']
+source = [
+    'src/main.c',
+    'src/vmp-media-factory.c',
+    'src/vmp-video-config.c',
+    'src/vmp-error.c',
+    'src/vmp-common.c',
+    'src/vmp-pipeline-manager.c']
 
 executable('vmp-server', source, dependencies: [glib_dep, gstreamer_dep, gstreamer_rtsp_server_dep, gstreamer_rtsp_dep, gudev_dep])
