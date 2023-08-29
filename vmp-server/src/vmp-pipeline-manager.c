@@ -215,8 +215,31 @@ static void vmp_pipeline_manager_uevent_cb(GUdevClient *client,
  */
 static gboolean vmp_pipeline_manager_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineManager *mgr)
 {
+    VMPPipelineManagerPrivate *mgr_priv;
+
+    mgr_priv = vmp_pipeline_manager_get_instance_private(mgr);
+
     switch (GST_MESSAGE_TYPE(message))
     {
+    case GST_MESSAGE_EOS:
+        vmp_common_event_log_debug("bus callback", "Received EOS Event on Pipeline BUS!");
+
+        mgr_priv->receivedEOS = TRUE;
+
+        // Set Pipeline to NULL state
+        GstStateChangeReturn ret = gst_element_set_state(mgr_priv->pipeline, GST_STATE_NULL);
+        // Transfer: None
+        const gchar *stateReturn = gst_element_state_change_return_get_name(ret);
+        vmp_common_event_log_debug("bus callback", "Set pipeline to NULL. Response: %s", stateReturn);
+        break;
+    case GST_MESSAGE_ERROR:
+    {
+        GError *err = NULL;
+        gst_message_parse_error(message, &err, NULL);
+        vmp_common_event_log_debug("bus callback", "Error: %s", err->message);
+        g_error_free(err);
+        break;
+    }
     default:
         break;
     }
