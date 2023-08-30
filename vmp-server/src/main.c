@@ -11,14 +11,12 @@
 #include <glib.h>
 #include <gst/rtsp-server/rtsp-server.h>
 
-// For V4L2 device detection
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <linux/videodev2.h>
-
 // For setting up the RTSP server
 #include "vmp-media-factory.h"
 #include "vmp-video-config.h"
+
+// Ingress pipeline management
+#include "vmp-pipeline-manager.h"
 
 // For error handling
 #include "vmp-error.h"
@@ -33,39 +31,13 @@ GOptionEntry entries[] = {
 // Forward declarations
 static void start(gchar *camera_interpipe_name, gchar *presentation_interpipe_name, gchar *audio_interpipe_name);
 
-static void check_v4l2_device(gchar *device, GError **error)
-{
-    errno = 0;
-    int fd = open(device, O_RDWR);
-    if (fd == -1)
-    {
-        g_set_error(error, vmp_error_quark(), VMP_ERROR_V4L2_ERRNO, "Could not open device %s: %s", device, g_strerror(errno));
-        return;
-    }
-
-    errno = 0;
-    struct v4l2_capability cap;
-    if (ioctl(fd, VIDIOC_QUERYCAP, &cap) == -1)
-    {
-        g_set_error(error, vmp_error_quark(), VMP_ERROR_V4L2_ERRNO, "Could not query device %s: %s", device, g_strerror(errno));
-        return;
-    }
-
-    if (!(cap.capabilities & V4L2_CAP_VIDEO_OUTPUT))
-    {
-        g_set_error(error, vmp_error_quark(), VMP_ERROR_V4L2_NOT_SUPPORTED, "Device %s is not a video output device", device);
-        return;
-    }
-
-    close(fd);
-}
-
 int main(int argc, char *argv[])
 {
     // Initialize GStreamer
     gst_init(&argc, &argv);
 
     GMainLoop *loop;
+
     loop = g_main_loop_new(NULL, FALSE);
 
     gboolean verbose = FALSE;
@@ -104,27 +76,18 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        // Check if the devices are valid
-        check_v4l2_device(presentation_dev, &error);
-        if (error)
-        {
-            g_print("option parsing failed: %s\n", error->message);
-            exit(1);
-        }
+        // Start Pipeline Manager
+        vmp_pipeline_manager_new(presentation_dev, "presentation");
 
-        check_v4l2_device(camera_dev, &error);
-        if (error)
-        {
-            g_print("option parsing failed: %s\n", error->message);
-            exit(1);
-        }
+        // Start RTSP Server
+        start("camera", "presentation", "audio");
     }
     else
     {
         gchar *aux_pipeline;
 
         aux_pipeline = g_strdup_printf(
-            "v4l2src ! queue ! videoconvert ! queue ! intervideosink channel=presentation "
+            "videotestsrc ! queue ! videoconvert ! queue ! intervideosink channel=presentation "
             "videotestsrc pattern=green ! video/x-raw,width=480,height=270 ! queue ! intervideosink channel=camera");
         // TODO: Proper auxillary pipeline state management
 
