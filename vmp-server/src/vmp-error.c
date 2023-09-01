@@ -17,6 +17,8 @@ gchar *vmp_error_get_message(VMPError error)
         return "Missing arguments";
     case VMP_ERROR_V4L2_ERRNO:
         return "V4L2 error";
+    case VMP_ERROR_ALSA_ERRNO:
+        return "ALSA error";
     case VMP_ERROR_V4L2_NOT_SUPPORTED:
         return "V4L2 device is not a video output device";
     case VMP_ERROR_DEVICE_NOT_AVAILABLE:
