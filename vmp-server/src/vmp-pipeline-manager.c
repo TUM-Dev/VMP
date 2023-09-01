@@ -19,6 +19,9 @@
 #include <linux/videodev2.h>
 #include <unistd.h>
 
+// For ALSA device detection
+#include <sound/asound.h>
+
 /*
  * MARK: Functions
  */
@@ -50,6 +53,7 @@ static void check_v4l2_device(gchar *device, GError **error)
     if (ioctl(fd, VIDIOC_QUERYCAP, &cap) == -1)
     {
         g_set_error(error, vmp_error_quark(), VMP_ERROR_V4L2_ERRNO, "Could not query device %s: %s", device, g_strerror(errno));
+        close(fd);
         return;
     }
 
@@ -58,11 +62,33 @@ static void check_v4l2_device(gchar *device, GError **error)
     close(fd);
 }
 
+static void check_alsa_device(gchar *device, GError **error)
+{
+    errno = 0;
+    int fd = open(device, O_RDWR);
+    if (fd == -1)
+    {
+        g_set_error(error, vmp_error_quark(), VMP_ERROR_DEVICE_NOT_AVAILABLE, "Could not open device %s: %s", device, g_strerror(errno));
+        return;
+    }
+
+    // Check if device is a sound card
+    errno = 0;
+    int isSoundCard = ioctl(fd, SNDRV_CTL_IOCTL_CARD_INFO, NULL);
+    if (isSoundCard < 0)
+    {
+        g_set_error(error, vmp_error_quark(), VMP_ERROR_ALSA_ERRNO, "Could not query device %s: %s", device, g_strerror(errno));
+        close(fd);
+        return;
+    }
+}
+
 enum _VMPPipelineManagerProperty
 {
     PROP_0,
     PROP_SRC_DEVICE,
     PROP_CHANNEL,
+    PROP_CONFIG,
     N_PROPERTIES
 };
 
@@ -77,8 +103,8 @@ typedef struct _VMPPipelineManagerPrivate
     GstElement *pipeline;
     GstBus *bus;
     GUdevClient *udev_client;
-    gboolean receivedEOS;
     gboolean deviceConnected;
+    VMPPipelineConfig config;
 } VMPPipelineManagerPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE(VMPPipelineManager, vmp_pipeline_manager, G_TYPE_OBJECT);
@@ -107,11 +133,11 @@ static void vmp_pipeline_manager_init(VMPPipelineManager *self)
 
     priv->src_device_name = NULL;
     priv->channel = NULL;
+    priv->config = VMP_PIPELINE_CONFIG_V4L2;
     priv->pipeline = NULL;
     priv->bus = NULL;
     // Transfer: Full
     priv->udev_client = g_udev_client_new(subsystems);
-    priv->receivedEOS = FALSE;
     priv->deviceConnected = FALSE;
 }
 
@@ -138,12 +164,20 @@ static void vmp_pipeline_manager_class_init(VMPPipelineManagerClass *klass)
         NULL,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
 
+    obj_properties[PROP_CONFIG] = g_param_spec_enum(
+        "config",
+        "Source Device Configuration",
+        "Type of the source device",
+        VMP_TYPE_PIPELINE_CONFIG,
+        VMP_PIPELINE_CONFIG_V4L2,
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+
     g_object_class_install_properties(gobject_class, N_PROPERTIES, obj_properties);
 }
 
-VMPPipelineManager *vmp_pipeline_manager_new(gchar *src_device, gchar *channel)
+VMPPipelineManager *vmp_pipeline_manager_new(gchar *src_device, VMPPipelineConfig config, gchar *channel)
 {
-    return g_object_new(VMP_TYPE_PIPELINE_MANAGER, "src-device", src_device, "channel", channel, NULL);
+    return g_object_new(VMP_TYPE_PIPELINE_MANAGER, "src-device", src_device, "config", config, "channel", channel, NULL);
 }
 
 static void vmp_pipeline_manager_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
@@ -158,6 +192,9 @@ static void vmp_pipeline_manager_set_property(GObject *object, guint property_id
         break;
     case PROP_CHANNEL:
         priv->channel = g_value_dup_string(value);
+        break;
+    case PROP_CONFIG:
+        priv->config = g_value_get_enum(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
@@ -177,6 +214,9 @@ static void vmp_pipeline_manager_get_property(GObject *object, guint property_id
         break;
     case PROP_CHANNEL:
         g_value_set_string(value, priv->channel);
+        break;
+    case PROP_CONFIG:
+        g_value_set_enum(value, priv->config);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
@@ -231,9 +271,6 @@ static void vmp_pipeline_manager_constructed(GObject *object)
         return;
     }
 
-    // Try to build pipeline
-    vmp_pipeline_manager_build_pipeline(self);
-
     // Connect uevent callback
     g_signal_connect(priv->udev_client, "uevent", G_CALLBACK(vmp_pipeline_manager_uevent_cb), self);
 }
@@ -241,26 +278,6 @@ static void vmp_pipeline_manager_constructed(GObject *object)
 /*
  * MARK: Callbacks
  */
-
-/* This callback mechanism is used when the udev monitor callback received a device insertion
- * message, but cannot restart the pipeline immediately, as the GStreamer EOS message was not
- * emitted/processed yet. By defering the restart procedure with a timeout event, we can
- * wait for the GStreamer bus to emit the EOS message via the GMainLoop.
- */
-static gboolean vmp_pipeline_manager_defered_restart_cb(VMPPipelineManager *mgr)
-{
-    VMPPipelineManagerPrivate *mgr_priv;
-
-    mgr_priv = vmp_pipeline_manager_get_instance_private(mgr);
-
-    if (mgr_priv->receivedEOS)
-    {
-        g_log(VMP_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "Defered pipeline restart: EOS received! Restarting pipeline...\n");
-        vmp_pipeline_manager_restart_pipeline(mgr);
-        return FALSE;
-    }
-    return TRUE;
-}
 
 /* Monitor changes to the device using udev, and react accordingly.
  */
@@ -294,20 +311,14 @@ static void vmp_pipeline_manager_uevent_cb(GUdevClient *client,
             if (mgr_priv->pipeline != NULL)
             {
                 vmp_common_event_log_debug("udev callback",
-                                           "Pipeline was initialised prior. Checking if End-of-Stream event was already sent...");
-                if (mgr_priv->receivedEOS)
-                {
-                    vmp_common_event_log_debug("udev callback", "Immediately restarting pipeline...");
-                    vmp_pipeline_manager_restart_pipeline(mgr);
-                }
-                else
-                {
-                    vmp_common_event_log_debug("udev callback",
-                                               "Defer pipeline creation, as GStreamer bus has not emitted End-of-Stream yet!");
+                                           "Pipeline was initialised prior. Setting pipeline state to NULL...");
+                // Set Pipeline to NULL state
+                GstStateChangeReturn ret = gst_element_set_state(mgr_priv->pipeline, GST_STATE_NULL);
+                // Transfer: None
+                const gchar *stateReturn = gst_element_state_change_return_get_name(ret);
+                vmp_common_event_log_debug("udev callback", "Set pipeline to NULL. Response: %s", stateReturn);
 
-                    // Install Condition Checker in Event Loop
-                    g_timeout_add(100, (GSourceFunc)vmp_pipeline_manager_defered_restart_cb, mgr);
-                }
+                vmp_pipeline_manager_restart_pipeline(mgr);
             }
             else
             {
@@ -323,22 +334,10 @@ static void vmp_pipeline_manager_uevent_cb(GUdevClient *client,
  */
 static gboolean vmp_pipeline_manager_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineManager *mgr)
 {
-    VMPPipelineManagerPrivate *mgr_priv;
-
-    mgr_priv = vmp_pipeline_manager_get_instance_private(mgr);
-
     switch (GST_MESSAGE_TYPE(message))
     {
     case GST_MESSAGE_EOS:
         vmp_common_event_log_debug("bus callback", "Received EOS Event on Pipeline BUS!");
-
-        mgr_priv->receivedEOS = TRUE;
-
-        // Set Pipeline to NULL state
-        GstStateChangeReturn ret = gst_element_set_state(mgr_priv->pipeline, GST_STATE_NULL);
-        // Transfer: None
-        const gchar *stateReturn = gst_element_state_change_return_get_name(ret);
-        vmp_common_event_log_debug("bus callback", "Set pipeline to NULL. Response: %s", stateReturn);
         break;
     case GST_MESSAGE_ERROR:
     {
@@ -358,6 +357,11 @@ static gboolean vmp_pipeline_manager_bus_cb(GstBus *bus, GstMessage *message, VM
 /*
  * MARK: VMethods
  */
+void vmp_pipeline_manager_start(VMPPipelineManager *mgr)
+{
+    // Try to build pipeline
+    vmp_pipeline_manager_build_pipeline(mgr);
+}
 
 static void vmp_pipeline_manager_build_pipeline(VMPPipelineManager *mgr)
 {
@@ -366,19 +370,58 @@ static void vmp_pipeline_manager_build_pipeline(VMPPipelineManager *mgr)
     VMPPipelineManagerPrivate *mgr_priv;
     mgr_priv = vmp_pipeline_manager_get_instance_private(mgr);
 
-    check_v4l2_device(mgr_priv->src_device_name, &err);
+    if (mgr_priv->config == VMP_PIPELINE_CONFIG_V4L2)
+    {
+        check_v4l2_device(mgr_priv->src_device_name, &err);
+        if (err && (g_error_matches(err, vmp_error_quark(), VMP_ERROR_V4L2_ERRNO) || g_error_matches(err, vmp_error_quark(), VMP_ERROR_V4L2_NOT_SUPPORTED)))
+        {
+            g_log(VMP_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                  "Device %s found but does not have required attributes: %s.\n Monitoring device and waiting...",
+                  mgr_priv->src_device_name, err->message);
+            return;
+        }
+    }
+    else if (mgr_priv->config == VMP_PIPELINE_CONFIG_SOUND)
+    {
+        check_alsa_device(mgr_priv->src_device_name, &err);
+        if (err && g_error_matches(err, vmp_error_quark(), VMP_ERROR_ALSA_ERRNO))
+        {
+            g_log(VMP_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                  "Device %s found but SNDRV_CTL_IOCTL_CARD_INFO returned an error: %s.\n Monitoring device and waiting...",
+                  mgr_priv->src_device_name, err->message);
+            return;
+        }
+    }
 
-    if (err && (g_error_matches(err, vmp_error_quark(), VMP_ERROR_V4L2_ERRNO) || g_error_matches(err, vmp_error_quark(), VMP_ERROR_V4L2_NOT_SUPPORTED)))
+    if (err && g_error_matches(err, vmp_error_quark(), VMP_ERROR_DEVICE_NOT_AVAILABLE))
     {
         g_log(VMP_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
-              "Device %s found but does not have required attributes: %s.\n Monitoring device and waiting...",
+              "Device %s could not be opened: %s. Monitoring subsystem and waiting...",
               mgr_priv->src_device_name, err->message);
+        return;
     }
-    else if (!err)
+    else
     {
-        // Transfer: FULL
-        // TODO: Generalise pipeline creation process
-        gchar *pipeline_desc = g_strdup_printf("v4l2src device=%s ! queue ! videoconvert ! queue ! intervideosink channel=%s", mgr_priv->src_device_name, mgr_priv->channel);
+        gchar *pipeline_desc;
+
+        if (mgr_priv->config == VMP_PIPELINE_CONFIG_V4L2)
+        {
+            // Transfer: Full
+            pipeline_desc = g_strdup_printf("v4l2src device=%s ! queue ! videoconvert ! queue ! intervideosink channel=%s", mgr_priv->src_device_name, mgr_priv->channel);
+        }
+        else if (mgr_priv->config == VMP_PIPELINE_CONFIG_SOUND)
+        {
+            // TODO: Enforce S16LE right after alsasrc possible?
+            // Transfer: Full
+            pipeline_desc = g_strdup_printf("alsasrc device=%s ! queue ! audioconvert ! capsfilter caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! audioresample ! queue ! interaudiosink channel=%s",
+                                            mgr_priv->src_device_name, mgr_priv->channel);
+        }
+        else
+        {
+            g_log(VMP_LOG_DOMAIN, G_LOG_LEVEL_WARNING, "Unknown configuration type: %d", mgr_priv->config);
+            return;
+        }
+
         g_log(VMP_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,
               "Device %s is a valid v4l2 video output device. Starting pipeline with description: %s", mgr_priv->src_device_name, pipeline_desc);
 
@@ -402,15 +445,8 @@ static void vmp_pipeline_manager_build_pipeline(VMPPipelineManager *mgr)
 
         // Set Internal Status
         mgr_priv->deviceConnected = TRUE;
-        mgr_priv->receivedEOS = FALSE;
 
         gst_element_set_state(mgr_priv->pipeline, GST_STATE_PLAYING);
-    }
-    else
-    {
-        g_log(VMP_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
-              "Device %s could not be opened: %s. Monitoring v4l2 subsystem and waiting...",
-              mgr_priv->src_device_name, err->message);
     }
 }
 
@@ -428,7 +464,6 @@ static void vmp_pipeline_manager_restart_pipeline(VMPPipelineManager *mgr)
 
     // Set internal state
     mgr_priv->deviceConnected = TRUE;
-    mgr_priv->receivedEOS = FALSE;
 
     stateReturnReady = gst_element_set_state(mgr_priv->pipeline, GST_STATE_READY);
     stateReturnReadyName = gst_element_state_change_return_get_name(stateReturnReady);

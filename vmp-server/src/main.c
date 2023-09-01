@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
         }
 
         // Start Pipeline Manager
-        vmp_pipeline_manager_new(presentation_dev, "presentation");
+        vmp_pipeline_manager_new(presentation_dev, VMP_PIPELINE_CONFIG_V4L2, "presentation");
 
         // Start RTSP Server
         start("camera", "presentation", "audio");
