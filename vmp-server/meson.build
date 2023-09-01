@@ -27,6 +27,14 @@ source = [
     'src/vmp-video-config.c',
     'src/vmp-error.c',
     'src/vmp-common.c',
-    'src/vmp-pipeline-manager.c']
+    'src/vmp-pipeline-manager.c',
+    'src/vmp-pipeline-config.c']
 
-executable('vmp-server', source, dependencies: [glib_dep, gstreamer_dep, gstreamer_rtsp_server_dep, gstreamer_rtsp_dep, gudev_dep])
+dependencies = [
+    glib_dep,
+    gstreamer_dep,
+    gstreamer_rtsp_dep,
+    gstreamer_rtsp_server_dep,
+    gudev_dep]
+
+executable('vmp-server', source, dependencies: dependencies)
