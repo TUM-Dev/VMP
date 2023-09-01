@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "vmp-media-factory.h": "c"
+        "vmp-media-factory.h": "c",
+        "vmp-pipeline-manager.h": "c",
+        "asound.h": "c",
+        "vmp-video-config.h": "c"
     }
 }
