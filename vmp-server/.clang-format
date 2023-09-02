@@ -2,6 +2,7 @@
 Language:        ObjC
 BasedOnStyle:    LLVM
 IndentWidth:     4
+TabWidth:        4
 ColumnLimit:     120
 UseTab:          Always
 
