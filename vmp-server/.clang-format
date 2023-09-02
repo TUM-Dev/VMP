@@ -1,0 +1,28 @@
+---
+Language:        ObjC
+BasedOnStyle:    LLVM
+IndentWidth:     4
+ColumnLimit:     120
+UseTab:          Always
+
+# Objective-C specific settings
+ObjCBlockIndentWidth:     4
+ObjCSpaceAfterProperty:   true
+ObjCSpaceBeforeProtocolList: true
+
+# Break constructor initializers before the colon and after commas
+BreakConstructorInitializersBeforeComma: false
+BreakConstructorInitializers: BeforeColon
+
+# Add a space after C-style casts
+SpaceAfterCStyleCast: true
+
+# Break before all operators
+BreakBeforeBinaryOperators: NonAssignment
+
+# Pointer alignment
+DerivePointerAlignment: false
+PointerAlignment: Right
+
+# Keep empty lines at the start of blocks
+KeepEmptyLinesAtTheStartOfBlocks: false
