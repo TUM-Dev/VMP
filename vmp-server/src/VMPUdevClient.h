@@ -76,7 +76,7 @@
    This method returns immediately, as further events are handled asynchronously.
    A subsequent call to stopMonitor is required to stop the monitoring of udev events.
 */
-- (void)startMonitorWithError:(NSError **)error;
+- (BOOL)startMonitorWithError:(NSError **)error;
 
 /**
    @brief Stops monitoring udev events
