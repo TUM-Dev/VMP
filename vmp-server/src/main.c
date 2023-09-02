@@ -15,9 +15,6 @@
 #include "vmp-media-factory.h"
 #include "vmp-video-config.h"
 
-// Ingress pipeline management
-#include "vmp-pipeline-manager.h"
-
 // For error handling
 #include "vmp-error.h"
 
@@ -76,8 +73,7 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        // Start Pipeline Manager
-        vmp_pipeline_manager_new(presentation_dev, VMP_PIPELINE_CONFIG_V4L2, "presentation");
+        // FIXME: Start Pipeline Manager
 
         // Start RTSP Server
         start("camera", "presentation", "audio");

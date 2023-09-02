@@ -59,9 +59,6 @@ source = [
     'src/vmp-media-factory.c',
     'src/vmp-video-config.c',
     'src/vmp-error.c',
-    'src/vmp-common.c',
-    'src/vmp-pipeline-manager.c',
-    'src/vmp-pipeline-config.c',
     # Objc files
     'src/VMPUdevClient.m',
     'src/VMPErrors.m',
