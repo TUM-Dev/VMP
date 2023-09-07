@@ -107,7 +107,7 @@ NSString *kVMPServerChannelTypeALSA = @"ALSA";
 	NSRunLoop *current = [NSRunLoop currentRunLoop];
 	[current addTimer:timer forMode:NSDefaultRunLoopMode];
 
-	if ([_rtspServer startWithError:error]) {
+	if (![_rtspServer startWithError:error]) {
 		return NO;
 	}
 
