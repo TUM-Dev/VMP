@@ -8,12 +8,10 @@
 #include <stdlib.h>
 #include <gst/gst.h>
 
-#import "VMPServerMain.h"
+// Generated project configuration
+#include "../build/config.h"
 
-// TODO: Move into meson configuration
-#define VERSION_MAJOR 0
-#define VERSION_MINOR 1
-#define VERSION_PATCH 0
+#import "VMPServerMain.h"
 
 #define DEFAULT_PATHS @[ @"~/.config/VMPServer", @"/etc/VMPServer" ]
 
@@ -24,7 +22,7 @@
 	"  -v, --version\t\t\tPrint version information\n"                                                                 \
 	"  -c, --config=PATH\t\tPath to configuration file\n"
 
-static void version(void) { fprintf(stderr, "VMPServer %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH); }
+static void version(void) { fprintf(stderr, "%s %d.%d.%d\n", PROJECT_NAME, MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION); }
 
 static void usage(void) { fputs(USAGE_MSG, stderr); }
 

@@ -1,6 +1,8 @@
-project('vmp-server', ['objc', 'c'])
+project('vmp-server', ['objc', 'c'], version : '0.1.0')
 
 fs = import('fs')
+
+isNVJetson = false
 
 # Ensure clang is used for Objective-C
 objc_compiler = meson.get_compiler('objc')
@@ -22,8 +24,7 @@ if fs.exists('/proc/device-tree/model')
     model = fs.read('/proc/device-tree/model')
     if model.contains('NVIDIA Jetson')
         message('Found Nvidia Jetson in device-tree model description')
-        add_project_arguments('-DNV_JETSON', language: 'c')
-        message('Added NV_JETSON flag')
+        isNVJetson = true
     endif
 endif
 
@@ -63,13 +64,36 @@ source = [
     'src/VMPErrors.m',
 ]
 
-
-
 dependencies = [
     glib_dep,
     gstreamer_dep,
     gstreamer_rtsp_dep,
     gstreamer_rtsp_server_dep,
     udev_dep]
+
+ # Get version from project and split into major, minor, and patch
+version = meson.project_version()
+version_split = version.split('.')
+
+major_version = version_split[0]
+minor_version = version_split[1]
+patch_version = version_split[2]
+
+# Add version to configuration data
+conf_data = configuration_data()
+conf_data.set('MAJOR_VERSION', major_version)
+conf_data.set('MINOR_VERSION', minor_version)
+conf_data.set('PATCH_VERSION', patch_version)
+conf_data.set('PROJECT_NAME', '"' + meson.project_name() + '"')
+
+if isNVJetson
+    conf_data.set('NV_JETSON', 1)
+else
+    conf_data.set('NV_JETSON', 0)
+endif
+
+configure_file(input : 'config.h.in',
+               output : 'config.h',
+               configuration : conf_data)
 
 executable('vmp-server', source, dependencies: dependencies)

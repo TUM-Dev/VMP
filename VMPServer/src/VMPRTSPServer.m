@@ -13,6 +13,9 @@
 #import "VMPGMediaFactory.h"
 #import "VMPGVideoConfig.h"
 
+// Generated project configuration
+#include "../build/config.h"
+
 #define CONFIG_ERROR(error, description)                                                                               \
 	NSLog(@"Configuration error: %@", description);                                                                    \
 	if (error) {                                                                                                       \

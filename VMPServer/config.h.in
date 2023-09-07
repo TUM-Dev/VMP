@@ -1,0 +1,21 @@
+/* vmp-server - A virtual multimedia processor
+ * Copyright (C) 2023 Hugo Melder
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+#ifndef VMP_SERVER_CONFIG_H
+#define VMP_SERVER_CONFIG_H
+
+#define MAJOR_VERSION @MAJOR_VERSION@
+#define MINOR_VERSION @MINOR_VERSION@
+#define PATCH_VERSION @PATCH_VERSION@
+#define PROJECT_NAME  @PROJECT_NAME@
+
+// Hardware configuration
+
+#if @NV_JETSON@
+#define NV_JETSON
+#endif
+
+#endif // VMP_SERVER_CONFIG_H

@@ -8,6 +8,9 @@
 #include <gst/gst.h>
 #include "VMPGMediaFactory.h"
 
+// Generated project configuration
+#include "../build/config.h"
+
 enum _VMPMediaFactoryProperty
 {
     PROP_0,
