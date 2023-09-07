@@ -6,6 +6,7 @@
 
 #include <getopt.h>
 #include <stdlib.h>
+#include <gst/gst.h>
 
 #import "VMPServerMain.h"
 
@@ -28,6 +29,9 @@ static void version(void) { fprintf(stderr, "VMPServer %d.%d.%d\n", VERSION_MAJO
 static void usage(void) { fputs(USAGE_MSG, stderr); }
 
 int main(int argc, char *argv[]) {
+	// Initialize the GStreamer library
+    gst_init (&argc, &argv);
+
 	@autoreleasepool {
 		NSRunLoop *runLoop;
 		NSString *selectedPath;
