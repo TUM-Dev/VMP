@@ -5,6 +5,9 @@
  */
 
 #import "VMPServerMain.h"
+#import "VMPRTSPServer.h"
+
+#import <glib.h>
 
 NSString *kVMPServerMountPointsKey = @"mountpoints";
 NSString *kVMPServerRTSPPortKey = @"rtspPort";
@@ -54,12 +57,23 @@ NSString *kVMPServerChannelTypeALSA = @"ALSA";
 		_rtspAddress = plist[kVMPServerRTSPAddressKey];
 		_rtspMountpoints = plist[kVMPServerMountPointsKey];
 		_channelConfiguration = plist[kVMPServerChannelConfigurationKey];
+
+		if (!_rtspPort || !_rtspAddress || !_rtspMountpoints || !_channelConfiguration) {
+			if (error) {
+				*error = [NSError errorWithDomain:VMPErrorDomain code:VMPErrorCodeConfigurationError userInfo:nil];
+			}
+			return nil;
+		}
 	}
 
 	return self;
 }
 
-@implementation VMPServerMain
+@end
+
+@implementation VMPServerMain {
+	VMPRTSPServer *_rtspServer;
+}
 
 + (instancetype)serverWithConfiguration:(VMPServerConfiguration *)configuration {
 	return [[VMPServerMain alloc] initWithConfiguration:configuration];
@@ -71,12 +85,33 @@ NSString *kVMPServerChannelTypeALSA = @"ALSA";
 	self = [super init];
 	if (self) {
 		_configuration = configuration;
+		_rtspServer = [VMPRTSPServer serverWithConfiguration:configuration];
 	}
 
 	return self;
 }
 
-- (BOOL)run {
-	return NO;
+- (void)iterateMainLoop:(NSTimer *)timer {
+	// One iteration of the main loop in the default context. Non-blocking.
+	g_main_context_iteration(NULL, FALSE);
 }
+
+- (BOOL)runWithError:(NSError **)error {
+	// Iterate glib mainloop context with NSTimer (fire every second)
+	NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:1.0
+													  target:self
+													selector:@selector(iterateMainLoop:)
+													userInfo:nil
+													 repeats:YES];
+
+	NSRunLoop *current = [NSRunLoop currentRunLoop];
+	[current addTimer:timer forMode:NSDefaultRunLoopMode];
+
+	if ([_rtspServer startWithError:error]) {
+		return NO;
+	}
+
+	return YES;
+}
+
 @end

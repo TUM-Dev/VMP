@@ -108,6 +108,6 @@ extern NSString *kVMPServerChannelTypeALSA;
 /**
 	@brief Start the server
 */
-- (BOOL)run;
+- (BOOL)runWithError:(NSError **)error;
 
 @end
