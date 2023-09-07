@@ -13,11 +13,37 @@
 #import "VMPGMediaFactory.h"
 #import "VMPGVideoConfig.h"
 
-#define POPULATE_ERROR(error, description)                                                                             \
+#define CONFIG_ERROR(error, description)                                                                               \
+	NSLog(@"Configuration error: %@", description);                                                                    \
 	if (error) {                                                                                                       \
 		NSDictionary *userInfo = @{NSLocalizedDescriptionKey : description};                                           \
 		*error = [NSError errorWithDomain:VMPErrorDomain code:VMPErrorCodeConfigurationError userInfo:userInfo];       \
 	}
+
+#ifdef NV_JETSON
+// TODO: Make explicit width and height argument configurable. As we only need to set this explicitly for the Jetson, we
+// need to preformat the launch string.
+#define LAUNCH_VIDEO                                                                                                   \
+	@"intervideosrc channel=%@ ! queue ! nvvidconv ! video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080 ! "   \
+	@"nvv4l2h264enc maxperf-enable=1 bitrate=5000000 ! rtph264pay name=pay0 pt=96"
+#else
+#define LAUNCH_VIDEO @"intervideosrc channel=%@ ! queue ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96"
+#endif
+
+/* We added an audioresample element audioresample element to ensure that any input audio is resampled to match the
+ * output rate properly, which is essential for maintaining AV sync and good quality over the RTSP stream.
+ *
+ * NOTE: This needs to be tested, and removed it produces to much overhead.
+ *
+ * We encode the audio stream into AAC-LC (default profile of avenc_aac) with a bitrate of 128kbps, which should be
+ * enough for our use case.
+ */
+#define LAUNCH_AUDIO                                                                                                   \
+	@"interaudiosrc channel=%@ ! queue ! audioconvert ! audioresample ! avenc_aac bitrate=128000 ! rtpmp4apay "        \
+	@"name=pay1 pt=97"
+
+// Combine the video and audio launch strings (separated by a space)
+#define LAUNCH_COMBINED LAUNCH_VIDEO @" " LAUNCH_AUDIO
 
 @implementation VMPRTSPServer {
 	GstRTSPServer *_server;
@@ -63,7 +89,7 @@
 		NSString *channelName = conf[kVMPServerChannelNameKey];
 
 		if (!channelType || !channelName) {
-			POPULATE_ERROR(error, @"Channel configuration is missing required keys name or type")
+			CONFIG_ERROR(error, @"Channel configuration is missing required keys name or type")
 			return NO;
 		}
 
@@ -71,7 +97,7 @@
 
 		NSDictionary *channelProperties = conf[kVMPServerChannelPropertiesKey];
 		if (!channelProperties) {
-			POPULATE_ERROR(error, @"Channel configuration is missing properties")
+			CONFIG_ERROR(error, @"Channel configuration is missing properties")
 			return NO;
 		}
 
@@ -80,7 +106,7 @@
 		if ([channelType isEqualToString:kVMPServerChannelTypeV4L2]) {
 			NSString *device = channelProperties[@"device"];
 			if (!device) {
-				POPULATE_ERROR(error, @"V4L2 channel is missing device property")
+				CONFIG_ERROR(error, @"V4L2 channel is missing device property")
 				return NO;
 			}
 
@@ -91,7 +117,7 @@
 																			   Delegate:self];
 			if (![manager start]) {
 				// TODO: Get information out of manager
-				POPULATE_ERROR(error, @"Failed to start V4L2 pipeline")
+				CONFIG_ERROR(error, @"Failed to start V4L2 pipeline")
 				return NO;
 			}
 
@@ -99,7 +125,7 @@
 		} else if ([channelType isEqualToString:kVMPServerChannelTypeALSA]) {
 			NSString *device = channelProperties[@"device"];
 			if (!device) {
-				POPULATE_ERROR(error, @"ALSA channel is missing device property") return NO;
+				CONFIG_ERROR(error, @"ALSA channel is missing device property") return NO;
 			}
 
 			NSLog(@"Creating ALSA pipeline manager for device %@", device);
@@ -110,19 +136,19 @@
 
 			if (![manager start]) {
 				// TODO: Get information out of manager
-				POPULATE_ERROR(error, @"Failed to start ALSA pipeline")
+				CONFIG_ERROR(error, @"Failed to start ALSA pipeline")
 				return NO;
 			}
 
 			[_managedPipelines addObject:manager];
 		} else if ([channelType isEqualToString:kVMPServerChannelTypeVideoTest]) {
-			POPULATE_ERROR(error, @"Video test channel not implemented")
+			CONFIG_ERROR(error, @"Video test channel not implemented")
 			return NO;
 		} else if ([channelType isEqualToString:kVMPServerChannelTypeAudioTest]) {
-			POPULATE_ERROR(error, @"Audio test channel not implemented")
+			CONFIG_ERROR(error, @"Audio test channel not implemented")
 			return NO;
 		} else {
-			POPULATE_ERROR(error, @"Unknown channel type")
+			CONFIG_ERROR(error, @"Unknown channel type")
 			return NO;
 		}
 	}
@@ -138,19 +164,19 @@
 		NSString *audioChannel = mountpoint[kVMPServerMountpointAudioChannelKey];
 
 		if (!path || !type) {
-			POPULATE_ERROR(error, @"Mountpoint configuration is missing required keys")
+			CONFIG_ERROR(error, @"Mountpoint configuration is missing required keys")
 			return NO;
 		}
 
 		if (!videoChannel && !audioChannel) {
-			POPULATE_ERROR(error, @"Mountpoint configuration requires a video or audio channel")
+			CONFIG_ERROR(error, @"Mountpoint configuration requires a video or audio channel")
 			return NO;
 		}
 
 		if ([type isEqualToString:kVMPServerMountpointTypeCombined]) {
 			NSString *secondaryVideoChannel = mountpoint[kVMPServerMountpointSecondaryVideoChannelKey];
 			if (!secondaryVideoChannel) {
-				POPULATE_ERROR(error, @"Combined mountpoint requires a secondary video channel")
+				CONFIG_ERROR(error, @"Combined mountpoint requires a secondary video channel")
 				return NO;
 			}
 
@@ -185,8 +211,25 @@
 			g_object_unref(presentation_config);
 			g_object_unref(output_config);
 		} else if ([type isEqualToString:kVMPServerMountpointTypeSingle]) {
-			POPULATE_ERROR(error, @"Single mountpoint not implemented")
-			return NO;
+			GstRTSPMediaFactory *factory;
+			NSString *launchCommand;
+
+			factory = gst_rtsp_media_factory_new();
+			// Only create one pipeline and share it with other clients
+			gst_rtsp_media_factory_set_shared(factory, TRUE);
+
+			if (!videoChannel) { // Audio-only channel
+				launchCommand = [NSString stringWithFormat:LAUNCH_AUDIO, audioChannel];
+
+			} else if (!audioChannel) { // Video-only channel
+				launchCommand = [NSString stringWithFormat:LAUNCH_VIDEO, videoChannel];
+			} else { // audio and video channel
+				launchCommand = [NSString stringWithFormat:LAUNCH_COMBINED, videoChannel, audioChannel];
+			}
+
+			gst_rtsp_media_factory_set_launch(factory, (const gchar *) [launchCommand UTF8String]);
+
+			gst_rtsp_mount_points_add_factory(_mountPoints, (const gchar *) [path UTF8String], factory);
 		}
 	}
 
@@ -206,6 +249,9 @@
 
 	// Start the RTSP server
 	gst_rtsp_server_attach(_server, NULL);
+
+	NSLog(@"RTSP server listening on address '%@' on port '%@'", [_configuration rtspAddress],
+		  [_configuration rtspPort]);
 
 	return YES;
 }
