@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "vmp-video-config.h"
+#include "VMPGVideoConfig.h"
 
 enum _VMPVideoConfigProperty
 {

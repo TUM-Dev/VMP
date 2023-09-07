@@ -12,11 +12,8 @@
 #include <gst/rtsp-server/rtsp-server.h>
 
 // For setting up the RTSP server
-#include "vmp-media-factory.h"
-#include "vmp-video-config.h"
-
-// For error handling
-#include "vmp-error.h"
+#include "VMPGMediaFactory.h"
+#include "VMPGVideoConfig.h"
 
 GOptionEntry entries[] = {
     {"verbose", 'v', 0, G_OPTION_ARG_NONE, NULL, "Be verbose", NULL},
@@ -60,21 +57,6 @@ int main(int argc, char *argv[])
 
     if (!mock)
     {
-        if (!presentation_dev)
-        {
-            g_set_error(&error, vmp_error_quark(), VMP_ERROR_ARGUMENTS_MISSING, "No presentation device specified");
-            g_print("option parsing failed: %s\n", error->message);
-            exit(1);
-        }
-        else if (!camera_dev)
-        {
-            g_set_error(&error, vmp_error_quark(), VMP_ERROR_ARGUMENTS_MISSING, "No camera device specified");
-            g_print("option parsing failed: %s\n", error->message);
-            exit(1);
-        }
-
-        // FIXME: Start Pipeline Manager
-
         // Start RTSP Server
         start("camera", "presentation", "audio");
     }

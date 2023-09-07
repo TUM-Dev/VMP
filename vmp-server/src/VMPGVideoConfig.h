@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: MIT
  */
 
+ /* VMPGVideoConfig: A video configuration class
+  * This class is responsible for storing the video configuration
+  * for the custom rtsp media factory (SEE VMPGMediaFactory).
+  * NOTE: This is a GObject class, and not a Objective-C class.
+ */
+
 #ifndef VMP_VIDEO_CONFIG_H
 #define VMP_VIDEO_CONFIG_H
 

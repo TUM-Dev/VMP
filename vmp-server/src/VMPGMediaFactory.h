@@ -4,11 +4,15 @@
  * SPDX-License-Identifier: MIT
  */
 
+/* VMPGMediaFactory: A Subclass of the GSTRTSPMediaFactory for compositing the combined stream
+ * NOTE: This is a GObject subclass, and not a Objective-C class. Prepare yourself for lots of macros!
+ */
+
 #ifndef VMP_MEDIA_FACTORY_H
 #define VMP_MEDIA_FACTORY_H
 
 #include <gst/rtsp-server/rtsp-media-factory.h>
-#include "vmp-video-config.h"
+#include "VMPGVideoConfig.h"
 
 G_BEGIN_DECLS
 
@@ -27,9 +31,7 @@ struct _VMPMediaFactory
     GstRTSPMediaFactory parent;
 };
 
-VMPMediaFactory *vmp_media_factory_new(gchar *camera_interpipe_name, gchar *presentation_interpipe_name, gchar *audio_interpipe_name,
-                                       VMPVideoConfig *output_configuration, VMPVideoConfig *camera_configuration,
-                                       VMPVideoConfig *presentation_configuration);
+VMPMediaFactory *vmp_media_factory_new(const gchar *camera_channel, const gchar *presentation_channel, const gchar *audio_channel, VMPVideoConfig *output_configuration, VMPVideoConfig *camera_configuration, VMPVideoConfig *presentation_configuration);
 
 G_END_DECLS
 

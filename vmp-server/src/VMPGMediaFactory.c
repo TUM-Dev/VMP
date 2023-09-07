@@ -4,11 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-/* vmp-media-factory: A Subclass of the GSTRTSPMediaFactory for compositing the combined stream
- */
 
 #include <gst/gst.h>
-#include "vmp-media-factory.h"
+#include "VMPGMediaFactory.h"
 
 enum _VMPMediaFactoryProperty
 {
@@ -110,11 +108,11 @@ static void vmp_media_factory_class_init(VMPMediaFactoryClass *self)
     g_object_class_install_properties(gobject_class, N_PROPERTIES, obj_properties);
 }
 
-VMPMediaFactory *vmp_media_factory_new(gchar *camera_interpipe_name, gchar *presentation_interpipe_name, gchar *audio_interpipe_name, VMPVideoConfig *output_configuration, VMPVideoConfig *camera_configuration, VMPVideoConfig *presentation_configuration)
+VMPMediaFactory *vmp_media_factory_new(const gchar *camera_channel, const gchar *presentation_channel, const gchar *audio_channel, VMPVideoConfig *output_configuration, VMPVideoConfig *camera_configuration, VMPVideoConfig *presentation_configuration)
 {
-    return g_object_new(VMP_TYPE_MEDIA_FACTORY, "camera-interpipe-name", camera_interpipe_name,
-                        "presentation-interpipe-name", presentation_interpipe_name,
-                        "audio-interpipe-name", audio_interpipe_name, "output-configuration", output_configuration,
+    return g_object_new(VMP_TYPE_MEDIA_FACTORY, "camera-interpipe-name", camera_channel,
+                        "presentation-interpipe-name", presentation_channel,
+                        "audio-interpipe-name", audio_channel, "output-configuration", output_configuration,
                         "camera-configuration", camera_configuration, "presentation-configuration", presentation_configuration,
                         NULL);
 }

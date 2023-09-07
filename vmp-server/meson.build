@@ -56,13 +56,14 @@ add_project_link_arguments(gnustep_base_libs, language: 'objc')
 
 source = [
     'src/main.c',
-    'src/vmp-media-factory.c',
-    'src/vmp-video-config.c',
-    'src/vmp-error.c',
+    'src/VMPGMediaFactory.c',
+    'src/VMPGVideoConfig.c',
     # Objc files
+    'src/VMPServerMain.m',
+    'src/VMPRTSPServer.m',
     'src/VMPUdevClient.m',
+    'src/VMPPipelineManager.m',
     'src/VMPErrors.m',
-    'src/VMPPipelineManager.m'
 ]
 
 
