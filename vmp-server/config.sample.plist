@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>rtspAddress</key>
+    <string>0.0.0.0</string>
+    <key>rtspPort</key>
+    <string>8554</string>
+    <key>mountpoints</key>
+    <array>
+        <dict>
+            <key>path</key>
+            <string>/comb</string>
+            <key>type</key>
+            <string>combined</string>
+            <key>name</key>
+            <string>Combined</string>
+            <key>videoChannel</key>
+            <string>present0</string>
+            <key>secondaryVideoChannel</key>
+            <string>camera0</string>
+            <key>audioChannel</key>
+            <string>audio0</string>
+        </dict>
+    </array>
+    <key>channelConfiguration</key>
+    <array>
+        <dict>
+            <key>name</key>
+            <string>present0</string>
+            <key>type</key>
+            <string>V4L2</string>
+            <key>properties</key>
+            <dict>
+                <key>device</key>
+                <string>/dev/video0</string>
+            </dict>
+        </dict>
+        <dict>
+            <key>name</key>
+            <string>camera0</string>
+            <key>type</key>
+            <string>videoTest</string>
+            <key>properties</key>
+            <dict>
+                <key>width</key>
+                <integer>1920</integer>
+                <key>height</key>
+                <integer>1080</integer>
+            </dict>
+        </dict>
+        <dict>
+            <key>name</key>
+            <string>audio0</string>
+            <key>type</key>
+            <string>audioTest</string>
+            <key>properties</key>
+            <dict>
+                <key>channels</key>
+                <integer>2</integer>
+            </dict>
+        </dict>
+    </array>
+</dict>
+</plist>
