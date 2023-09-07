@@ -117,11 +117,4 @@
 	[_fileHandle readInBackgroundAndNotify];
 }
 
-- (void)dealloc {
-	[self stopMonitor];
-
-	udev_monitor_unref(_monitor);
-	udev_unref(_udev);
-}
-
 @end
