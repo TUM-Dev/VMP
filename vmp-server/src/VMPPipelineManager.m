@@ -46,6 +46,13 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
   @protected
 	BOOL _pipelineCreated;
 }
+
++ (instancetype)managerWithLaunchArgs:(NSString *)args
+							  Channel:(NSString *)channel
+							 Delegate:(id<VMPPipelineManagerDelegate>)delegate {
+	return [[VMPPipelineManager alloc] initWithLaunchArgs:args Channel:channel Delegate:delegate];
+}
+
 - (instancetype)initWithLaunchArgs:(NSString *)args
 						   Channel:(NSString *)channel
 						  Delegate:(id<VMPPipelineManagerDelegate>)delegate {
@@ -118,6 +125,8 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 		}
 		return NO;
 	}
+
+	NSDebugLog(@"Created pipeline with launch args: %@", _launchArgs);
 
 	// Set pipeline state to playing
 	ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);

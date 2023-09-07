@@ -67,6 +67,10 @@ extern NSString *const kVMPStatePlaying;
 @property (nonatomic, readonly) NSString *state;
 @property (nonatomic, readonly) GstElement *pipeline;
 
++ (instancetype)managerWithLaunchArgs:(NSString *)args
+							  Channel:(NSString *)channel
+							 Delegate:(id<VMPPipelineManagerDelegate>)delegate;
+
 /**
    @brief Returns a pipeline manager initialized with the given channel
 
