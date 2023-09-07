@@ -161,6 +161,8 @@
 										   @"queue ! intervideosink channel=%@",
 										   [width unsignedLongValue], [height unsignedLongValue], channelName];
 
+			NSDebugLog(@"Creating pipeline manager with launch arguments: %@", launchArgs);
+
 			VMPPipelineManager *manager = [VMPPipelineManager managerWithLaunchArgs:launchArgs
 																			Channel:channelName
 																		   Delegate:self];
@@ -182,6 +184,7 @@
 													@"caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! "
 													@"audioresample ! queue ! interaudiosink channel=%@",
 													channelName];
+			NSDebugLog(@"Creating pipeline manager with launch arguments: %@", launchArgs);
 			VMPPipelineManager *manager = [VMPPipelineManager managerWithLaunchArgs:launchArgs
 																			Channel:channelName
 																		   Delegate:self];
