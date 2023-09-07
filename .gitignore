@@ -168,3 +168,6 @@ vmp-server/build/
 vmp-http-spec/vmp-http-spec.json
 .vscode/settings.json
 .gitignore
+
+# Config
+config.plist

@@ -1,5 +1,7 @@
 {
     "files.associations": {
+        "VMPServer.h": "objective-c",
+        "VMPRTSPServerMain.h": "objective-c",
         "vmp-media-factory.h": "c",
         "vmp-pipeline-manager.h": "c",
         "asound.h": "c",

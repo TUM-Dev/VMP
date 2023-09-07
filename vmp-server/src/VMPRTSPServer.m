@@ -121,6 +121,8 @@
 				return NO;
 			}
 
+			NSLog(@"V4L2 pipeline for channel %@ started successfully", channelName);
+
 			[_managedPipelines addObject:manager];
 		} else if ([channelType isEqualToString:kVMPServerChannelTypeALSA]) {
 			NSString *device = channelProperties[@"device"];
@@ -140,13 +142,59 @@
 				return NO;
 			}
 
+			NSLog(@"ALSA pipeline for channel %@ started successfully", channelName);
+
 			[_managedPipelines addObject:manager];
 		} else if ([channelType isEqualToString:kVMPServerChannelTypeVideoTest]) {
-			CONFIG_ERROR(error, @"Video test channel not implemented")
-			return NO;
+			NSString *launchArgs;
+			NSNumber *width = channelProperties[@"width"];
+			NSNumber *height = channelProperties[@"height"];
+
+			if (!width || !height) {
+				CONFIG_ERROR(error, @"Video test channel is missing width or height property")
+				return NO;
+			}
+
+			NSLog(@"Creating video test pipeline manager with width %@ and height %@", width, height);
+			launchArgs =
+				[NSString stringWithFormat:@"videotestsrc ! video/x-raw,width=%lu,height=%lu !  queue ! videoconvert ! "
+										   @"queue ! intervideosink channel=%@",
+										   [width unsignedLongValue], [height unsignedLongValue], channelName];
+
+			VMPPipelineManager *manager = [VMPPipelineManager managerWithLaunchArgs:launchArgs
+																			Channel:channelName
+																		   Delegate:self];
+			if (![manager start]) {
+				// TODO: Get information out of manager
+				CONFIG_ERROR(error, @"Failed to start video test pipeline")
+				return NO;
+			}
+
+			NSLog(@"Video test pipeline for channel %@ started successfully", channelName);
+
+			[_managedPipelines addObject:manager];
 		} else if ([channelType isEqualToString:kVMPServerChannelTypeAudioTest]) {
-			CONFIG_ERROR(error, @"Audio test channel not implemented")
-			return NO;
+			NSString *launchArgs;
+
+			NSLog(@"Creating audio test pipeline manager");
+
+			launchArgs = [NSString stringWithFormat:@"audiotestsrc ! capsfilter "
+													@"caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! "
+													@"audioresample ! queue ! interaudiosink channel=%@",
+													channelName];
+			VMPPipelineManager *manager = [VMPPipelineManager managerWithLaunchArgs:launchArgs
+																			Channel:channelName
+																		   Delegate:self];
+
+			if (![manager start]) {
+				// TODO: Get information out of manager
+				CONFIG_ERROR(error, @"Failed to start audio test pipeline")
+				return NO;
+			}
+
+			NSLog(@"Audio test pipeline for channel %@ started successfully", channelName);
+
+			[_managedPipelines addObject:manager];
 		} else {
 			CONFIG_ERROR(error, @"Unknown channel type")
 			return NO;
