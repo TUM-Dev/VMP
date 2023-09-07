@@ -14,9 +14,6 @@ gstreamer_dep = dependency('gstreamer-1.0')
 gstreamer_rtsp_dep = dependency('gstreamer-rtsp-1.0')
 gstreamer_rtsp_server_dep = dependency('gstreamer-rtsp-server-1.0')
 # For linux device monitoring
-# TODO: Remove as we use VMPUdevClient
-gudev_dep = dependency('gudev-1.0')
-
 udev_dep = dependency('libudev')
 
 # Detect Nvidia Jetson Hardware with /proc/device-tree/model file and set NV_JETSON flag
@@ -73,7 +70,6 @@ dependencies = [
     gstreamer_dep,
     gstreamer_rtsp_dep,
     gstreamer_rtsp_server_dep,
-    gudev_dep,
     udev_dep]
 
 executable('vmp-server', source, dependencies: dependencies)
