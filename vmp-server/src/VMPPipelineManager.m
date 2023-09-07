@@ -22,17 +22,21 @@ NSString *const kVMPStateDeviceDisconnected = @"device_disconnected";
 NSString *const kVMPStateDeviceError = @"device_error";
 NSString *const kVMPStatePlaying = @"playing";
 
+#define PRINT_ERROR(error)                                                                                             \
+	if (error != nil) {                                                                                                \
+		NSLog(@"Error: %@", error);                                                                                    \
+	}
+
 static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineManager *mgr) { return TRUE; }
 
 // Redefine properties for readwrite access
 @interface VMPPipelineManager ()
 
 @property (nonatomic, readwrite) NSString *state;
-@property (nonatomic, readwrite) NSString *channel;
 @property (nonatomic, readwrite) GstElement *pipeline;
 
 // Pipeline management
-- (BOOL)_createPipelineWithLaunchArg:(NSString *)arg Error:(NSError **)error;
+- (BOOL)_createPipelineWithError:(NSError **)error;
 - (BOOL)_resumePipelineWithError:(NSError **)error;
 - (void)_resetPipeline;
 
@@ -42,10 +46,17 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
   @protected
 	BOOL _pipelineCreated;
 }
-- (instancetype)initWithChannel:(NSString *)channel Delegate:(id<VMPPipelineManagerDelegate>)delegate {
+- (instancetype)initWithLaunchArgs:(NSString *)args
+						   Channel:(NSString *)channel
+						  Delegate:(id<VMPPipelineManagerDelegate>)delegate {
+	NSAssert(args, @"Launch arguments cannot be nil");
+	NSAssert(channel, @"Channel cannot be nil");
+	NSAssert(delegate, @"Delegate cannot be nil");
+
 	self = [super init];
 	if (self) {
 		_channel = channel;
+		_launchArgs = args;
 		_delegate = delegate;
 		_state = kVMPStateIdle;
 		_pipeline = NULL;
@@ -55,19 +66,30 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 }
 
 - (BOOL)start {
-	NSAssert(NO, @"This method should be overriden and not called directly!");
-	return NO;
+	NSError *error = nil;
+
+	// Start pipeline immediately
+	if (![self _createPipelineWithError:&error]) {
+		PRINT_ERROR(error);
+		if (error != nil && [error code] == VMPErrorCodeGStreamerParseError) {
+			[self setState:kVMPStateDeviceError];
+			[[self delegate] onStateChanged:kVMPStateDeviceError];
+		}
+		return NO;
+	}
+
+	return YES;
 }
 
 - (void)stop {
-	NSAssert(NO, @"This method should be overriden and not called directly!");
+	[self _resetPipeline];
 }
 
 /* Create a pipeline and return the status.
    This method should only be called once during the lifetime of the object.
    Subsequent calls will return NO.
 */
-- (BOOL)_createPipelineWithLaunchArg:(NSString *)arg Error:(NSError **)error {
+- (BOOL)_createPipelineWithError:(NSError **)error {
 	GstElement *pipeline;
 	GstBus *bus;
 	GstStateChangeReturn ret;
@@ -80,7 +102,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 	_pipelineCreated = YES;
 
 	// Transfer: Full
-	pipeline = gst_parse_launch([arg UTF8String], &gerror);
+	pipeline = gst_parse_launch([_launchArgs UTF8String], &gerror);
 	if (pipeline == NULL) {
 		NSLog(@"Failed to create pipeline");
 		if (gerror != NULL) {
@@ -160,7 +182,6 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 
 @implementation VMPV4L2PipelineManager {
   @private
-	NSString *_pipelineDescription;
 	VMPUdevClient *_udevClient;
 }
 
@@ -173,13 +194,17 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 - (instancetype)initWithDevice:(NSString *)device
 					   channel:(NSString *)channel
 					  Delegate:(id<VMPPipelineManagerDelegate>)delegate {
-	self = [super initWithChannel:channel Delegate:delegate];
+	NSAssert(device, @"Device cannot be nil");
+	NSAssert(channel, @"Channel cannot be nil");
+
+	NSString *args =
+		[NSString stringWithFormat:@"v4l2src device=%@ ! queue ! videoconvert ! queue ! intervideosink channel=%@",
+								   device, channel];
+
+	self = [super initWithLaunchArgs:args Channel:channel Delegate:delegate];
 	if (self) {
 		_device = device;
 		_udevClient = [VMPUdevClient clientWithSubsystems:@[ @"video4linux" ] Delegate:self];
-		_pipelineDescription =
-			[NSString stringWithFormat:@"v4l2src device=%@ ! queue ! videoconvert ! queue ! intervideosink channel=%@",
-									   _device, [self channel]];
 	}
 	return self;
 }
@@ -188,11 +213,13 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 
 - (void)onDeviceAdded:(NSString *)device {
 	if ([device isEqualToString:_device]) {
+		NSError *error = nil;
 		[self setState:kVMPStateDeviceConnected];
 		[[self delegate] onStateChanged:kVMPStateDeviceConnected];
 
 		if (!_pipelineCreated) {
-			if (![self _createPipelineWithLaunchArg:_pipelineDescription Error:NULL]) {
+			if (![self _createPipelineWithError:&error]) {
+				PRINT_ERROR(error);
 				[self setState:kVMPStateDeviceError];
 				[[self delegate] onStateChanged:kVMPStateDeviceError];
 			} else {
@@ -200,7 +227,8 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 				[[self delegate] onStateChanged:kVMPStatePlaying];
 			}
 		} else { // Resume pipeline
-			if (![self _resumePipelineWithError:NULL]) {
+			if (![self _resumePipelineWithError:&error]) {
+				PRINT_ERROR(error);
 				[self setState:kVMPStateDeviceError];
 				[[self delegate] onStateChanged:kVMPStateDeviceError];
 			} else {
@@ -271,7 +299,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 		[self setState:kVMPStateDeviceConnected];
 		[[self delegate] onStateChanged:kVMPStateDeviceConnected];
 
-		if (![self _createPipelineWithLaunchArg:_pipelineDescription Error:&error]) {
+		if (![self _createPipelineWithError:&error]) {
 			if (error != nil && [error code] == VMPErrorCodeGStreamerParseError) {
 				[self setState:kVMPStateDeviceError];
 				[[self delegate] onStateChanged:kVMPStateDeviceError];
@@ -297,7 +325,6 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 
 @implementation VMPALSAPipelineManager {
   @private
-	NSString *_pipelineDescription;
 	VMPUdevClient *_udevClient;
 }
 + (instancetype)managerWithDevice:(NSString *)device
@@ -309,16 +336,20 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 - (instancetype)initWithDevice:(NSString *)device
 					   channel:(NSString *)channel
 					  Delegate:(id<VMPPipelineManagerDelegate>)delegate {
-	self = [super initWithChannel:channel Delegate:delegate];
+	NSAssert(device, @"Device cannot be nil");
+	NSAssert(channel, @"Channel cannot be nil");
+
+	// TODO: Enforce S16LE right after alsasrc possible?
+	NSString *args =
+		[NSString stringWithFormat:@"alsasrc device=%@ ! queue ! audioconvert ! capsfilter "
+								   @"caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! audioresample ! "
+								   @"queue ! interaudiosink channel=%@",
+								   _device, [self channel]];
+
+	self = [super initWithLaunchArgs:args Channel:channel Delegate:delegate];
 	if (self) {
 		_device = device;
 		_udevClient = [VMPUdevClient clientWithSubsystems:@[ @"sound" ] Delegate:self];
-		// TODO: Enforce S16LE right after alsasrc possible?
-		_pipelineDescription =
-			[NSString stringWithFormat:@"alsasrc device=%@ ! queue ! audioconvert ! capsfilter "
-									   @"caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! audioresample ! "
-									   @"queue ! interaudiosink channel=%@",
-									   _device, [self channel]];
 	}
 	return self;
 }
@@ -387,7 +418,9 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 		[self setState:kVMPStateDeviceConnected];
 		[[self delegate] onStateChanged:kVMPStateDeviceConnected];
 
-		if (![self _createPipelineWithLaunchArg:_pipelineDescription Error:&error]) {
+		if (![self _createPipelineWithError:&error]) {
+			PRINT_ERROR(error);
+
 			if (error != nil && [error code] == VMPErrorCodeGStreamerParseError) {
 				[self setState:kVMPStateDeviceError];
 				[[self delegate] onStateChanged:kVMPStateDeviceError];

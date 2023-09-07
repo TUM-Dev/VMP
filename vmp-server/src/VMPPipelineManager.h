@@ -62,7 +62,8 @@ extern NSString *const kVMPStatePlaying;
 @interface VMPPipelineManager : NSObject
 
 @property (nonatomic, weak) id<VMPPipelineManagerDelegate> delegate;
-@property (nonatomic, readonly) NSString *channel;
+@property (nonatomic, strong) NSString *launchArgs;
+@property (nonatomic, strong) NSString *channel;
 @property (nonatomic, readonly) NSString *state;
 @property (nonatomic, readonly) GstElement *pipeline;
 
@@ -76,7 +77,9 @@ extern NSString *const kVMPStatePlaying;
 
    @return The pipeline manager for the given channel
 */
-- (instancetype)initWithChannel:(NSString *)channel Delegate:(id<VMPPipelineManagerDelegate>)delegate;
+- (instancetype)initWithLaunchArgs:(NSString *)args
+						   Channel:(NSString *)channel
+						  Delegate:(id<VMPPipelineManagerDelegate>)delegate;
 
 /**
 	@brief Starts the pipeline manager
