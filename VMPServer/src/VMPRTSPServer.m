@@ -27,7 +27,7 @@
 	@"intervideosrc channel=%@ ! queue ! nvvidconv ! video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080 ! "   \
 	@"nvv4l2h264enc maxperf-enable=1 bitrate=5000000 ! rtph264pay name=pay0 pt=96"
 #else
-#define LAUNCH_VIDEO @"intervideosrc channel=%@ ! queue ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96"
+#define LAUNCH_VIDEO @"intervideosrc channel=%@ ! video/x-raw, width=(int)1920, height=(int)1080 ! queue ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96"
 #endif
 
 /* We added an audioresample element audioresample element to ensure that any input audio is resampled to match the
