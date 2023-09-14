@@ -19,6 +19,8 @@ gst-launch-1.0 videotestsrc ! queue ! intervideosink channel=test intervideosrc 
 ```
 
 ### Client
+``` sh
 gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,media=video,payload=96,clock-rate=90000,encoding-name=VP8 ! rtpvp8depay ! vp8dec ! autovideosink
 gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,media=video,payload=96,clock-rate=90000,encoding-name=H264 ! rtph264depay ! avdec_h264 ! autovideosink
 gst-launch-1.0 udpsrc port=5000 ! tsdemux ! h264parse ! avdec_h264 ! autovideosink
+```
