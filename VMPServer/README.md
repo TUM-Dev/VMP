@@ -4,7 +4,7 @@ This subproject implements the core of the VMP: The RTSP Server, and a HTTP Serv
 
 
 ## IN PROGRESS
-- V4L2 Device Monitoring and Pipeline Restart Mechanism
+
 - Centralised Logging (Preparation for HTTP API)
 - HTTP API
 
@@ -15,6 +15,8 @@ This subproject implements the core of the VMP: The RTSP Server, and a HTTP Serv
 - CLI Parsing 
 - V4L2 Device Detection
 - Hardware Specific Encoder Selection
-
+- V4L2 Device Monitoring and Pipeline Restart Mechanism
+- Default Configuration
+- 
 ## TODO
-- Default Configuration, and Daemon Configuration
+- systemd Daemon Configuration
