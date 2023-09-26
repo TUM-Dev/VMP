@@ -1,22 +1,21 @@
-# vmp-server: The virtual streaming processor server
+# vmpserverd: The virtual streaming processor server daemon
 
 This subproject implements the core of the VMP: The RTSP Server, and a HTTP Server for status updates. 
 
 
-## IN PROGRESS
+## Building
+### Dependencies
+Currently the following dependencies are required:
+- glib 2.0
+- gstreamer 1.0
+- gstreamer rtsp server 1.0
+- gstreamer plugins base 1.0
+- gstreamer plugins good 1.0
+- gstreamer plugins bad 1.0 (for intervideo{src,sink}, and interaudio{src,sink})
+- gstreamer plugins ugly 1.0 (for x264 when not compiling on an Nvidia Jetson Nano)
+- gstreamer plugins libav (for aac encoding)
+- udev
+- libsystemd (for writing to the systemd journal)
+- A working GNUstep Objective-C 2.0 toolchain
 
-- Centralised Logging (Preparation for HTTP API)
-- HTTP API
-
-## DONE
-- RTSP Media Reuse
-- Single Camera, and presentation View
-- Use IPC (interpipe) to avoid reencoding for each pipeline that serves a mountpoint
-- CLI Parsing 
-- V4L2 Device Detection
-- Hardware Specific Encoder Selection
-- V4L2 Device Monitoring and Pipeline Restart Mechanism
-- Default Configuration
-- 
-## TODO
-- systemd Daemon Configuration
+Additionally, meson is required for building.
