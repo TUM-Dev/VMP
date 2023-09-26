@@ -78,6 +78,7 @@
 	return self;
 }
 
+// FIXME: This is bad. We should not have multiple pipelines with the same delegate
 #pragma mark - VMPPipelineManagerDelegate
 
 - (void)onStateChanged:(NSString *)state {
