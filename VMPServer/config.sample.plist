@@ -2,12 +2,34 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <!--
+        Specify the address and port of the RTSP server here.
+        The rtspAddress is the IP address of the interface to bind to.
+    -->
     <key>rtspAddress</key>
     <string>0.0.0.0</string>
     <key>rtspPort</key>
     <string>8554</string>
+    <!--
+        Specify the mountpoints of the RTSP server here.
+
+        A mountpoint consists of a path, type, and channel configuration.
+        The path is a component of the RTSP URL (e.g. rtsp://localhost:8554/<PATH>).
+
+        Currently, the following types are supported:
+            - single: A single video channel
+            - combined: A video channel with a secondary video channel
+
+        The channel values map to the channels defined in the
+        channelConfiguration array.
+    -->
     <key>mountpoints</key>
     <array>
+        <!--
+            This is a mountpoint configuration for the combined stream.
+            Note that we have a secondary video channel here, which is
+            used for the camera stream.
+        -->
         <dict>
             <key>path</key>
             <string>/comb</string>
@@ -22,7 +44,38 @@
             <key>audioChannel</key>
             <string>audio0</string>
         </dict>
+        <!--
+            A mountpoint configuration for a single stream.
+            
+            We use "single" instead of "combined" as the type here,
+            and only specify a single video channel.
+        -->
+        <dict>
+            <key>path</key>
+            <string>/presentation</string>
+            <key>type</key>
+            <string>single</string>
+            <key>name</key>
+            <string>Presentation</string>
+            <key>videoChannel</key>
+            <string>present0</string>
+            <key>audioChannel</key>
+            <string>audio0</string>
+        </dict>
     </array>
+    <!--
+        Specify the channel configuration here.
+
+        A channel consists of a name, type, and properties.
+        - The name is used to reference the channel in the mountpoints.
+        - The type specifies the type of the channel.
+        - The properties are specific to the channel type:
+            - "V4L2": device (required)
+            - "ALSA": device (required)
+            - "videoTest": width (required), height (required)
+            - "audioTest": channels (required)
+            - (experimental) "custom": gstLaunchDescription (required)
+    -->
     <key>channelConfiguration</key>
     <array>
         <dict>
