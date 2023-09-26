@@ -70,6 +70,7 @@ source = [
     'src/VMPPipelineManager.m',
     'src/VMPErrors.m',
     'src/VMPJournal.m',
+    'src/VMPHTTPServer.m',
 ]
 
 dependencies = [
