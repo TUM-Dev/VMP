@@ -7,6 +7,7 @@
 #import <glib.h>
 #import <gst/rtsp-server/rtsp-server.h>
 
+#import "VMPJournal.h"
 #import "VMPRTSPServer.h"
 
 // Combined stream
@@ -17,7 +18,7 @@
 #include "../build/config.h"
 
 #define CONFIG_ERROR(error, description)                                                                               \
-	NSLog(@"Configuration error: %@", description);                                                                    \
+	VMPError(description);                                                                                             \
 	if (error) {                                                                                                       \
 		NSDictionary *userInfo = @{NSLocalizedDescriptionKey : description};                                           \
 		*error = [NSError errorWithDomain:VMPErrorDomain code:VMPErrorCodeConfigurationError userInfo:userInfo];       \
@@ -30,7 +31,9 @@
 	@"intervideosrc channel=%@ ! queue ! nvvidconv ! video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080 ! "   \
 	@"nvv4l2h264enc maxperf-enable=1 bitrate=5000000 ! rtph264pay name=pay0 pt=96"
 #else
-#define LAUNCH_VIDEO @"intervideosrc channel=%@ ! video/x-raw, width=(int)1920, height=(int)1080 ! queue ! videoconvert ! x264enc ! rtph264pay name=pay0 pt=96"
+#define LAUNCH_VIDEO                                                                                                   \
+	@"intervideosrc channel=%@ ! video/x-raw, width=(int)1920, height=(int)1080 ! queue ! videoconvert ! x264enc ! "   \
+	@"rtph264pay name=pay0 pt=96"
 #endif
 
 /* We added an audioresample element audioresample element to ensure that any input audio is resampled to match the
@@ -59,7 +62,7 @@
 }
 
 - (instancetype)initWithConfiguration:(VMPServerConfiguration *)configuration {
-	NSAssert(configuration, @"Configuration cannot be nil");
+	VMP_ASSERT(configuration, @"Configuration cannot be nil");
 	self = [super init];
 	if (self) {
 		_configuration = configuration;
@@ -78,13 +81,15 @@
 #pragma mark - VMPPipelineManagerDelegate
 
 - (void)onStateChanged:(NSString *)state {
-	NSLog(@"Pipeline state changed: %@", state);
+	VMPInfo(@"Pipeline state changed: %@", state);
 }
 
 #pragma mark - Private methods
 
 // Iterate over the channelConfiguration array, create all pipeline managers acordingly, and start them.
 - (BOOL)_startChannelPipelinesWithError:(NSError **)error {
+	VMPDebug(@"Starting channel pipelines");
+
 	NSArray *channelConfiguration = [_configuration channelConfiguration];
 
 	for (NSDictionary *conf in channelConfiguration) {
@@ -96,7 +101,7 @@
 			return NO;
 		}
 
-		NSLog(@"Starting channel %@ of type %@", channelName, channelType);
+		VMPInfo(@"Starting channel %@ of type %@", channelName, channelType);
 
 		NSDictionary *channelProperties = conf[kVMPServerChannelPropertiesKey];
 		if (!channelProperties) {
@@ -104,7 +109,7 @@
 			return NO;
 		}
 
-		NSDebugLog(@"Channel properties: %@", channelProperties);
+		VMPDebug(@"Channel properties: %@", channelProperties);
 
 		if ([channelType isEqualToString:kVMPServerChannelTypeV4L2]) {
 			NSString *device = channelProperties[@"device"];
@@ -113,7 +118,7 @@
 				return NO;
 			}
 
-			NSLog(@"Creating V4L2 pipeline manager for device %@", device);
+			VMPInfo(@"Creating V4L2 pipeline manager for device %@", device);
 
 			VMPV4L2PipelineManager *manager = [VMPV4L2PipelineManager managerWithDevice:device
 																				channel:channelName
@@ -124,7 +129,7 @@
 				return NO;
 			}
 
-			NSLog(@"V4L2 pipeline for channel %@ started successfully", channelName);
+			VMPInfo(@"V4L2 pipeline for channel %@ started successfully", channelName);
 
 			[_managedPipelines addObject:manager];
 		} else if ([channelType isEqualToString:kVMPServerChannelTypeALSA]) {
@@ -133,7 +138,7 @@
 				CONFIG_ERROR(error, @"ALSA channel is missing device property") return NO;
 			}
 
-			NSLog(@"Creating ALSA pipeline manager for device %@", device);
+			VMPInfo(@"Creating ALSA pipeline manager for device %@", device);
 
 			VMPALSAPipelineManager *manager = [VMPALSAPipelineManager managerWithDevice:device
 																				channel:channelName
@@ -145,7 +150,7 @@
 				return NO;
 			}
 
-			NSLog(@"ALSA pipeline for channel %@ started successfully", channelName);
+			VMPInfo(@"ALSA pipeline for channel %@ started successfully", channelName);
 
 			[_managedPipelines addObject:manager];
 		} else if ([channelType isEqualToString:kVMPServerChannelTypeVideoTest]) {
@@ -158,13 +163,13 @@
 				return NO;
 			}
 
-			NSLog(@"Creating video test pipeline manager with width %@ and height %@", width, height);
+			VMPInfo(@"Creating video test pipeline manager with width %@ and height %@", width, height);
 			launchArgs =
 				[NSString stringWithFormat:@"videotestsrc ! video/x-raw,width=%lu,height=%lu !  queue ! videoconvert ! "
 										   @"queue ! intervideosink channel=%@",
 										   [width unsignedLongValue], [height unsignedLongValue], channelName];
 
-			NSDebugLog(@"Creating pipeline manager with launch arguments: %@", launchArgs);
+			VMPDebug(@"Creating pipeline manager with launch arguments: %@", launchArgs);
 
 			VMPPipelineManager *manager = [VMPPipelineManager managerWithLaunchArgs:launchArgs
 																			Channel:channelName
@@ -175,19 +180,19 @@
 				return NO;
 			}
 
-			NSLog(@"Video test pipeline for channel %@ started successfully", channelName);
+			VMPInfo(@"Video test pipeline for channel %@ started successfully", channelName);
 
 			[_managedPipelines addObject:manager];
 		} else if ([channelType isEqualToString:kVMPServerChannelTypeAudioTest]) {
 			NSString *launchArgs;
 
-			NSLog(@"Creating audio test pipeline manager");
+			VMPInfo(@"Creating audio test pipeline manager");
 
 			launchArgs = [NSString stringWithFormat:@"audiotestsrc ! capsfilter "
 													@"caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! "
 													@"audioresample ! queue ! interaudiosink channel=%@",
 													channelName];
-			NSDebugLog(@"Creating pipeline manager with launch arguments: %@", launchArgs);
+			VMPDebug(@"Creating pipeline manager with launch arguments: %@", launchArgs);
 			VMPPipelineManager *manager = [VMPPipelineManager managerWithLaunchArgs:launchArgs
 																			Channel:channelName
 																		   Delegate:self];
@@ -198,7 +203,7 @@
 				return NO;
 			}
 
-			NSLog(@"Audio test pipeline for channel %@ started successfully", channelName);
+			VMPInfo(@"Audio test pipeline for channel %@ started successfully", channelName);
 
 			[_managedPipelines addObject:manager];
 		} else {
@@ -206,10 +211,13 @@
 			return NO;
 		}
 	}
+
+	VMPDebug(@"Finished starting channel pipelines");
 	return YES;
 }
 
 - (BOOL)_createMountpointsWithError:(NSError **)error {
+	VMPDebug(@"Creating mountpoints");
 	NSArray *mountpoints = [_configuration rtspMountpoints];
 	for (NSDictionary *mountpoint in mountpoints) {
 		NSString *path = mountpoint[kVMPServerMountPointsPathKey];
@@ -287,10 +295,12 @@
 		}
 	}
 
+	VMPDebug(@"Finished creating mountpoints");
 	return YES;
 }
 
 - (BOOL)startWithError:(NSError **)error {
+	VMPInfo(@"Starting RTSP server...");
 	// Create and start all (ingress) pipelines
 	if (![self _startChannelPipelinesWithError:error]) {
 		return NO;
@@ -304,8 +314,8 @@
 	// Start the RTSP server
 	gst_rtsp_server_attach(_server, NULL);
 
-	NSLog(@"RTSP server listening on address '%@' on port '%@'", [_configuration rtspAddress],
-		  [_configuration rtspPort]);
+	VMPInfo(@"RTSP server listening on address '%@' on port '%@'", [_configuration rtspAddress],
+			[_configuration rtspPort]);
 
 	return YES;
 }

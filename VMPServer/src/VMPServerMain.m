@@ -5,6 +5,7 @@
  */
 
 #import "VMPServerMain.h"
+#import "VMPJournal.h"
 #import "VMPRTSPServer.h"
 
 #import <glib.h>
@@ -40,7 +41,7 @@ NSString *kVMPServerChannelTypeALSA = @"ALSA";
 }
 
 - (instancetype)initWithPlist:(NSString *)path withError:(NSError **)error {
-	NSAssert(path, @"Path cannot be nil");
+	VMP_ASSERT(path, @"Path cannot be nil");
 
 	self = [super init];
 	if (self) {
@@ -80,7 +81,7 @@ NSString *kVMPServerChannelTypeALSA = @"ALSA";
 }
 
 - (instancetype)initWithConfiguration:(VMPServerConfiguration *)configuration {
-	NSAssert(configuration, @"Configuration cannot be nil");
+	VMP_ASSERT(configuration, @"Configuration cannot be nil");
 
 	self = [super init];
 	if (self) {

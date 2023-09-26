@@ -6,6 +6,7 @@
 
 #import "VMPUdevClient.h"
 #import "VMPErrors.h"
+#import "VMPJournal.h"
 
 #include <libudev.h>
 
@@ -33,13 +34,17 @@
 }
 
 - (BOOL)startMonitorWithError:(NSError **)error {
+	VMPDebug(@"Starting udev monitor...");
+
 	if (_running) {
+		VMPDebug(@"Udev monitor already running");
 		return YES;
 	}
 
 	_running = YES;
 	_udev = udev_new();
 	if (!_udev) {
+		VMPError(@"Failed to create udev context");
 		if (error) {
 			*error = [NSError errorWithDomain:VMPErrorDomain code:VMPErrorCodeUdevError userInfo:nil];
 		}
@@ -49,6 +54,7 @@
 	// Create monitor for udev events
 	_monitor = udev_monitor_new_from_netlink(_udev, "udev");
 	if (!_monitor) {
+		VMPError(@"Failed to create udev monitor");
 		if (error) {
 			*error = [NSError errorWithDomain:VMPErrorDomain code:VMPErrorCodeUdevMonitorError userInfo:nil];
 		}
@@ -67,6 +73,7 @@
 
 	// Start monitoring
 	if (udev_monitor_enable_receiving(_monitor) < 0) {
+		VMPError(@"Failed to enable udev monitor");
 		if (error) {
 			*error = [NSError errorWithDomain:VMPErrorDomain code:VMPErrorCodeUdevMonitorError userInfo:nil];
 		}
@@ -84,6 +91,8 @@
 
 	[_fileHandle readInBackgroundAndNotify];
 
+	VMPDebug(@"Udev monitor started and listening for events");
+
 	return YES;
 }
 
@@ -100,12 +109,15 @@
 }
 
 - (void)udevEvent:(NSNotification *)notification {
-	NSData *data = [[notification userInfo] objectForKey:NSFileHandleNotificationDataItem];
-	const struct udev_device *dev = udev_monitor_receive_device(_monitor);
+	VMPDebug(@"Udev event received");
+
+	struct udev_device *dev = udev_monitor_receive_device(_monitor);
 	if (dev) {
 		NSString *action = [NSString stringWithUTF8String:udev_device_get_action(dev)];
 		NSString *subsystem = [NSString stringWithUTF8String:udev_device_get_subsystem(dev)];
 		NSString *device = [NSString stringWithUTF8String:udev_device_get_devnode(dev)];
+
+		VMPInfo(@"Udev event: %@ %@ %@", action, subsystem, device);
 
 		if ([action isEqualToString:@"add"]) {
 			[_delegate onDeviceAdded:device];
