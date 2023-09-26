@@ -10,7 +10,9 @@
 #define MAJOR_VERSION @MAJOR_VERSION@
 #define MINOR_VERSION @MINOR_VERSION@
 #define PATCH_VERSION @PATCH_VERSION@
+
 #define PROJECT_NAME  @PROJECT_NAME@
+#define BUNDLE_IDENTIFIER "com.hugomelder.vmpserverd"
 
 // Hardware configuration
 

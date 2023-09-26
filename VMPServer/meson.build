@@ -10,6 +10,11 @@ if objc_compiler.get_id() != 'clang'
   error('Clang is required for this project. Please set CC=clang, and OBJC=clang before running Meson.')
 endif
 
+# Check if the build type is debug
+if get_option('buildtype').startswith('debug')
+  add_global_arguments('-DDEBUG', language : 'objc')
+endif
+
 # Find GStreamer and GStreamer RTSP Server libraries using pkg-config
 glib_dep = dependency('glib-2.0')
 gstreamer_dep = dependency('gstreamer-1.0')
@@ -17,6 +22,8 @@ gstreamer_rtsp_dep = dependency('gstreamer-rtsp-1.0')
 gstreamer_rtsp_server_dep = dependency('gstreamer-rtsp-server-1.0')
 # For linux device monitoring
 udev_dep = dependency('libudev')
+# For logging
+systemd_dep = dependency('libsystemd')
 
 # Detect Nvidia Jetson Hardware with /proc/device-tree/model file and set NV_JETSON flag
 if fs.exists('/proc/device-tree/model')
@@ -62,6 +69,7 @@ source = [
     'src/VMPUdevClient.m',
     'src/VMPPipelineManager.m',
     'src/VMPErrors.m',
+    'src/VMPJournal.m',
 ]
 
 dependencies = [
@@ -69,7 +77,9 @@ dependencies = [
     gstreamer_dep,
     gstreamer_rtsp_dep,
     gstreamer_rtsp_server_dep,
-    udev_dep]
+    udev_dep,
+    systemd_dep,
+]
 
  # Get version from project and split into major, minor, and patch
 version = meson.project_version()
@@ -96,4 +106,4 @@ configure_file(input : 'config.h.in',
                output : 'config.h',
                configuration : conf_data)
 
-executable('vmp-server', source, dependencies: dependencies)
+executable('vmpserverd', source, dependencies: dependencies)

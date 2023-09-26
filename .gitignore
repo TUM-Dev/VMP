@@ -164,9 +164,9 @@ compile_commands.json
 .ionide
 
 # Build Artefacts
-vmp-server/build/
+VMPServer/build/
 vmp-http-spec/vmp-http-spec.json
-.vscode/settings.json
+.vscode/
 .gitignore
 
 # Config
