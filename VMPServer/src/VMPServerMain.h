@@ -37,6 +37,7 @@ extern NSString *kVMPServerChannelTypeVideoTest;
 extern NSString *kVMPServerChannelTypeAudioTest;
 extern NSString *kVMPServerChannelTypeV4L2;
 extern NSString *kVMPServerChannelTypeALSA;
+extern NSString *kVMPServerChannelTypeCustom;
 
 /**
 	@brief Server configuration class

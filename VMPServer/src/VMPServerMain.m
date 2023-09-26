@@ -10,6 +10,12 @@
 
 #import <glib.h>
 
+/**
+	Keys for the configuration plist
+
+	You can see an example of the configuration file in the
+	vmpserverd project directory.
+ */
 NSString *kVMPServerMountPointsKey = @"mountpoints";
 NSString *kVMPServerRTSPPortKey = @"rtspPort";
 NSString *kVMPServerRTSPAddressKey = @"rtspAddress";
@@ -34,6 +40,7 @@ NSString *kVMPServerChannelTypeVideoTest = @"videoTest";
 NSString *kVMPServerChannelTypeAudioTest = @"audioTest";
 NSString *kVMPServerChannelTypeV4L2 = @"V4L2";
 NSString *kVMPServerChannelTypeALSA = @"ALSA";
+NSString *kVMPServerChannelTypeCustom = @"custom";
 
 @implementation VMPServerConfiguration
 + (instancetype)configurationWithPlist:(NSString *)path withError:(NSError **)error {
