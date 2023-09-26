@@ -6,6 +6,9 @@
 
 #import "VMPPipelineManager.h"
 #import "VMPErrors.h"
+#import "VMPJournal.h"
+
+#include <glib.h>
 
 // For V4L2 device detection
 #include <fcntl.h>
@@ -24,11 +27,27 @@ NSString *const kVMPStatePlaying = @"playing";
 
 #define PRINT_ERROR(error)                                                                                             \
 	if (error != nil) {                                                                                                \
-		NSLog(@"Error: %@", error);                                                                                    \
+		VMPError(@"Error: %@", error);                                                                                 \
 	}
 
-static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, id<VMPPipelineManagerDelegate> mgr) {
-	[mgr respondsToSelector:@selector(onBusEvent:)] ? [mgr onBusEvent:message] : nil;
+static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineManager *mgr) {
+	GstObject *src = GST_MESSAGE_SRC(message);
+
+	gchar *debug;
+	GError *err;
+
+	switch (GST_MESSAGE_TYPE(message)) {
+	case GST_MESSAGE_EOS:
+		VMPInfo(@"End-of-stream reached for pipeline backing channel %@", [mgr channel]);
+		break;
+	case GST_MESSAGE_ERROR:
+		gst_message_parse_error(message, &err, &debug);
+		VMPError(@"Error received (channel %@) from element %s: %s. (Debug: %s)", [mgr channel], GST_OBJECT_NAME(src),
+				 err -> message, (debug) ? debug : "none");
+		break;
+	default:
+		break;
+	}
 	return TRUE;
 }
 
@@ -114,9 +133,9 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, id<VMPPipelin
 	// Transfer: Full
 	pipeline = gst_parse_launch([_launchArgs UTF8String], &gerror);
 	if (pipeline == NULL) {
-		NSLog(@"Failed to create pipeline");
+		VMPError(@"Failed to create pipeline");
 		if (gerror != NULL) {
-			NSLog(@"GStreamer error: %s", gerror->message);
+			VMPError(@"GStreamer error: %s", gerror->message);
 
 			if (error != NULL) {
 				NSDictionary *userInfo = @{NSLocalizedDescriptionKey : [NSString stringWithUTF8String:gerror->message]};
@@ -134,7 +153,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, id<VMPPipelin
 	// Set pipeline state to playing
 	ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
 	if (ret == GST_STATE_CHANGE_FAILURE) {
-		NSLog(@"Failed to start pipeline");
+		VMPError(@"Failed to start pipeline");
 		if (error != NULL) {
 			NSDictionary *userInfo = @{NSLocalizedDescriptionKey : @"Failed to start pipeline"};
 
@@ -149,7 +168,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, id<VMPPipelin
 	bus = gst_element_get_bus(pipeline);
 	if (bus != NULL) {
 		// Bridge object pointer without touching reference count
-		gst_bus_add_watch(bus, (GstBusFunc) gstreamer_bus_cb, (__bridge gpointer) _delegate);
+		gst_bus_add_watch(bus, (GstBusFunc) gstreamer_bus_cb, (__bridge gpointer) self);
 		gst_object_unref(bus);
 	}
 
@@ -166,7 +185,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, id<VMPPipelin
 
 	ret = gst_element_set_state([self pipeline], GST_STATE_PLAYING);
 	if (ret == GST_STATE_CHANGE_FAILURE) {
-		NSLog(@"Failed to resume pipeline");
+		VMPError(@"Failed to resume pipeline");
 		if (error != NULL) {
 			NSDictionary *userInfo = @{NSLocalizedDescriptionKey : @"Failed to resume pipeline"};
 
@@ -267,7 +286,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, id<VMPPipelin
 
 	int fd = open([_device UTF8String], O_RDWR);
 	if (fd == -1) {
-		NSLog(@"Failed to open device %@: %s", _device, strerror(errno));
+		VMPError(@"Failed to open device %@: %s", _device, strerror(errno));
 
 		if (error != NULL) {
 			NSDictionary *userInfo = @{NSLocalizedDescriptionKey : [NSString stringWithUTF8String:strerror(errno)]};
@@ -281,7 +300,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, id<VMPPipelin
 	// V4L2 devices support VIDIOC_QUERYCAP to optain information about the
 	// device
 	if (ioctl(fd, VIDIOC_QUERYCAP, &cap) == -1) {
-		NSLog(@"Failed to query device %@: %s", _device, strerror(errno));
+		VMPError(@"Failed to query device %@: %s", _device, strerror(errno));
 
 		if (error != NULL) {
 			NSDictionary *userInfo = @{NSLocalizedDescriptionKey : [NSString stringWithUTF8String:strerror(errno)]};
@@ -320,7 +339,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, id<VMPPipelin
 	}
 
 	if (![_udevClient startMonitorWithError:&error]) {
-		NSLog(@"Failed to start udev client: %@", error);
+		VMPError(@"Failed to start udev client: %@", error);
 		[self setState:kVMPStateDeviceError];
 		return NO;
 	}
