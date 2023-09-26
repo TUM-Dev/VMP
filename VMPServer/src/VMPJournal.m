@@ -11,6 +11,43 @@
 // Generated project configuration
 #include "../build/config.h"
 
+#define LOG_PREAMBLE                                                                                                   \
+	va_list args;                                                                                                      \
+	va_start(args, format);                                                                                            \
+	NSString *message = [[NSString alloc] initWithFormat:format arguments:args];                                       \
+	va_end(args);
+
+#define SEND_LOG(prefix, type, message)                                                                                \
+	fprintf(stderr, "[ %s ] %s\n", prefix, [message UTF8String]);                                                      \
+	[[VMPJournal defaultJournal] message:message withPriority:type];
+
+void VMPDebug(NSString *format, ...) {
+#ifdef DEBUG
+	LOG_PREAMBLE
+	SEND_LOG("DEBUG", kVMPJournalTypeDebug, message);
+#endif
+}
+
+void VMPInfo(NSString *format, ...) {
+	LOG_PREAMBLE
+	SEND_LOG("INFO", kVMPJournalTypeInfo, message);
+}
+
+void VMPWarn(NSString *format, ...) {
+	LOG_PREAMBLE
+	SEND_LOG("WARN", kVMPJournalTypeWarning, message);
+}
+
+void VMPError(NSString *format, ...) {
+	LOG_PREAMBLE
+	SEND_LOG("ERROR", kVMPJournalTypeError, message);
+}
+
+void VMPCritical(NSString *format, ...) {
+	LOG_PREAMBLE
+	SEND_LOG("CRITICAL", kVMPJournalTypeCritical, message);
+}
+
 @interface VMPJournal ()
 @property (nonatomic, readwrite) NSString *subsystem;
 @end

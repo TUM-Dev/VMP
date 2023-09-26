@@ -4,20 +4,20 @@
  * SPDX-License-Identifier: MIT
  */
 
-// Commonly used priority levels
-#ifdef DEBUG
-#define VMP_DEBUG(string) [[VMPJournal defaultJournal] message:string withPriority:kVMPJournalTypeDebug]
-#else
-// Suppress debug messages in release builds by replacing the message send with a no-op
-#define VMP_DEBUG(string) ;
-#endif
-
-#define VMP_INFO(string) [[VMPJournal defaultJournal] message:string withPriority:kVMPJournalTypeInfo]
-#define VMP_WARN(string) [[VMPJournal defaultJournal] message:string withPriority:kVMPJournalTypeWarning]
-#define VMP_ERROR(string) [[VMPJournal defaultJournal] message:string withPriority:kVMPJournalTypeError]
-#define VMP_NSERROR(error) [[VMPJournal defaultJournal] error:error withPriority:kVMPJournalTypeError]
-
 #import <Foundation/Foundation.h>
+
+void VMPDebug(NSString *format, ...);
+void VMPInfo(NSString *format, ...);
+void VMPWarn(NSString *format, ...);
+void VMPError(NSString *format, ...);
+void VMPCritical(NSString *format, ...);
+
+// Assertions
+#define VMP_ASSERT(condition, string)                                                                                  \
+	if (!(condition)) {                                                                                                \
+		VMPCritical(string);                                                                                           \
+		abort();                                                                                                       \
+	}
 
 /**
 	@brief Journal priority types
