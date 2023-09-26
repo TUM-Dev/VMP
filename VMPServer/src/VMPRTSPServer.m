@@ -92,6 +92,7 @@
 
 	NSArray *channelConfiguration = [_configuration channelConfiguration];
 
+	// TODO: Too much duplication here
 	for (NSDictionary *conf in channelConfiguration) {
 		NSString *channelType = conf[kVMPServerChannelTypeKey];
 		NSString *channelName = conf[kVMPServerChannelNameKey];
@@ -206,6 +207,22 @@
 			VMPInfo(@"Audio test pipeline for channel %@ started successfully", channelName);
 
 			[_managedPipelines addObject:manager];
+		} else if ([channelType isEqualToString:kVMPServerChannelTypeCustom]) {
+			NSString *launchArgs = channelProperties[@"gstLaunchDescription"];
+			if (!launchArgs) {
+				CONFIG_ERROR(error, @"Custom channel is missing gstLaunchDescription property")
+				return NO;
+			}
+
+			VMPInfo(@"Creating custom pipeline manager with launch arguments: %@", launchArgs);
+
+			VMPPipelineManager *manager = [VMPPipelineManager managerWithLaunchArgs:launchArgs
+																			Channel:channelName
+																		   Delegate:self];
+			if (![manager start]) {
+				CONFIG_ERROR(error, @"Failed to start custom pipeline")
+				return NO;
+			}
 		} else {
 			CONFIG_ERROR(error, @"Unknown channel type")
 			return NO;
