@@ -170,14 +170,14 @@ extern NSString *const kVMPStatePlaying;
 	Other pipelines can hook into this pipeline by using the interaudiosrc
 	with the same channel name.
 */
-@interface VMPALSAPipelineManager : VMPPipelineManager <VMPUdevClientDelegate>
+@interface VMPALSAPipelineManager : VMPPipelineManager
 
 @property (nonatomic, readonly) NSString *device;
 
 /**
 	@brief Returns a pipeline manager initialized with the given device
 
-	@param device The ALSA device to use
+	@param device The ALSA device to use. Note this is the ALSA device name (e.g. hw:... or similar)
 	@param channel The GStreamer intervideo/interaudio channel name
 	@param delegate The delegate to notify of state changes
 

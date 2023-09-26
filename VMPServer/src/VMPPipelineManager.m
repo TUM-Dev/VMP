@@ -27,7 +27,10 @@ NSString *const kVMPStatePlaying = @"playing";
 		NSLog(@"Error: %@", error);                                                                                    \
 	}
 
-static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineManager *mgr) { return TRUE; }
+static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, id<VMPPipelineManagerDelegate> mgr) {
+	[mgr respondsToSelector:@selector(onBusEvent:)] ? [mgr onBusEvent:message] : nil;
+	return TRUE;
+}
 
 // Redefine properties for readwrite access
 @interface VMPPipelineManager ()
@@ -146,7 +149,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 	bus = gst_element_get_bus(pipeline);
 	if (bus != NULL) {
 		// Bridge object pointer without touching reference count
-		gst_bus_add_watch(bus, (GstBusFunc) gstreamer_bus_cb, (__bridge gpointer) self);
+		gst_bus_add_watch(bus, (GstBusFunc) gstreamer_bus_cb, (__bridge gpointer) _delegate);
 		gst_object_unref(bus);
 	}
 
@@ -332,10 +335,8 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 
 @end
 
-@implementation VMPALSAPipelineManager {
-  @private
-	VMPUdevClient *_udevClient;
-}
+@implementation VMPALSAPipelineManager
+
 + (instancetype)managerWithDevice:(NSString *)device
 						  channel:(NSString *)channel
 						 Delegate:(id<VMPPipelineManagerDelegate>)delegate {
@@ -358,97 +359,8 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 	self = [super initWithLaunchArgs:args Channel:channel Delegate:delegate];
 	if (self) {
 		_device = device;
-		_udevClient = [VMPUdevClient clientWithSubsystems:@[ @"sound" ] Delegate:self];
 	}
 	return self;
-}
-
-#pragma mark - VMPUdevClientDelegate methods
-- (void)onDeviceAdded:(NSString *)device {
-	if ([device isEqualToString:_device]) {
-		[self setState:kVMPStateDeviceConnected];
-		[[self delegate] onStateChanged:kVMPStateDeviceConnected];
-	}
-}
-
-- (void)onDeviceRemoved:(NSString *)device {
-	if ([device isEqualToString:_device]) {
-		[self setState:kVMPStateDeviceDisconnected];
-		[[self delegate] onStateChanged:kVMPStateDeviceDisconnected];
-	}
-}
-
-- (BOOL)_checkAlsaDeviceWithError:(NSError **)error {
-	errno = 0;
-
-	int fd = open([_device UTF8String], O_RDWR);
-	if (fd == -1) {
-		NSLog(@"Failed to open device %@: %s", _device, strerror(errno));
-
-		if (error != NULL) {
-			NSDictionary *userInfo = @{NSLocalizedDescriptionKey : [NSString stringWithUTF8String:strerror(errno)]};
-			*error = [NSError errorWithDomain:VMPErrorDomain code:VMPErrorCodeDeviceNotFound userInfo:userInfo];
-		}
-		close(fd);
-		return NO;
-	}
-
-	// Check if device is a sound card
-	errno = 0;
-	int isSoundCard = ioctl(fd, SNDRV_CTL_IOCTL_CARD_INFO, NULL);
-	if (isSoundCard < 0) {
-		NSLog(@"Failed to query device %@: %s", _device, strerror(errno));
-
-		if (error != NULL) {
-			NSDictionary *userInfo = @{NSLocalizedDescriptionKey : [NSString stringWithUTF8String:strerror(errno)]};
-			*error = [NSError errorWithDomain:VMPErrorDomain code:VMPErrorALSADeviceCapabilities userInfo:userInfo];
-		}
-		close(fd);
-		return NO;
-	}
-
-	close(fd);
-	return YES;
-}
-
-- (BOOL)start {
-	NSError *error = nil;
-
-	// Start pipeline immediately if the device exists, and is a valid ALSA device
-	if (![self _checkAlsaDeviceWithError:&error]) {
-		if (error != nil && [error code] == VMPErrorCodeDeviceNotFound) {
-			[self setState:kVMPStateDeviceDisconnected];
-			[[self delegate] onStateChanged:kVMPStateDeviceDisconnected];
-		} else {
-			[self setState:kVMPStateDeviceError];
-			[[self delegate] onStateChanged:kVMPStateDeviceError];
-		}
-	} else { // Start pipeline immediately
-		[self setState:kVMPStateDeviceConnected];
-		[[self delegate] onStateChanged:kVMPStateDeviceConnected];
-
-		if (![self _createPipelineWithError:&error]) {
-			PRINT_ERROR(error);
-
-			if (error != nil && [error code] == VMPErrorCodeGStreamerParseError) {
-				[self setState:kVMPStateDeviceError];
-				[[self delegate] onStateChanged:kVMPStateDeviceError];
-			}
-		}
-	}
-
-	if (![_udevClient startMonitorWithError:&error]) {
-		NSLog(@"Failed to start udev client: %@", error);
-		[self setState:kVMPStateDeviceError];
-		return NO;
-	}
-
-	return YES;
-}
-
-- (void)stop {
-	[self _resetPipeline];
-	[_udevClient stopMonitor];
 }
 
 @end
