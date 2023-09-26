@@ -5,30 +5,33 @@
  */
 
 #include <getopt.h>
-#include <stdlib.h>
 #include <gst/gst.h>
+#include <stdlib.h>
 
 // Generated project configuration
 #include "../build/config.h"
 
+#import "VMPJournal.h"
 #import "VMPServerMain.h"
 
-#define DEFAULT_PATHS @[ @"~/.config/VMPServer", @"/etc/VMPServer" ]
+#define DEFAULT_PATHS @[ @"~/.config/vmpserverd", @"/etc/vmpserverd" ]
 
 #define USAGE_MSG                                                                                                      \
-	"Usage: VMPServer [OPTION]...\n"                                                                                   \
+	"Usage: vmpserverd [OPTION]...\n"                                                                                  \
 	"\n"                                                                                                               \
 	"  -h, --help\t\t\tPrint this help message\n"                                                                      \
 	"  -v, --version\t\t\tPrint version information\n"                                                                 \
 	"  -c, --config=PATH\t\tPath to configuration file\n"
 
-static void version(void) { fprintf(stderr, "%s %d.%d.%d\n", PROJECT_NAME, MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION); }
+static void version(void) {
+	fprintf(stderr, "%s %d.%d.%d\n", PROJECT_NAME, MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION);
+}
 
 static void usage(void) { fputs(USAGE_MSG, stderr); }
 
 int main(int argc, char *argv[]) {
 	// Initialize the GStreamer library
-    gst_init (&argc, &argv);
+	gst_init(&argc, &argv);
 
 	@autoreleasepool {
 		NSRunLoop *runLoop;
@@ -73,7 +76,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (!selectedPath) {
-			NSLog(@"No configuration file found");
+			VMPCritical(@"No configuration file found");
 			return EXIT_FAILURE;
 		}
 
@@ -82,20 +85,20 @@ int main(int argc, char *argv[]) {
 		VMPServerConfiguration *configuration = [VMPServerConfiguration configurationWithPlist:selectedPath
 																					 withError:&error];
 		if (!configuration) {
-			NSLog(@"Failed to create configuration from file %@: %@", selectedPath, error);
+			VMPCritical(@"Failed to create configuration from file %@: %@", selectedPath, error);
 			return EXIT_FAILURE;
 		}
 
 		// Create server
 		VMPServerMain *server = [VMPServerMain serverWithConfiguration:configuration];
 		if (!server) {
-			NSLog(@"Failed to create server from configuration: %@", error);
+			VMPCritical(@"Failed to create server from configuration: %@", error);
 			return EXIT_FAILURE;
 		}
 
 		// Start server
 		if (![server runWithError:&error]) {
-			NSLog(@"Failed to start server: %@", error);
+			VMPCritical(@"Failed to start server: %@", error);
 			return EXIT_FAILURE;
 		}
 
