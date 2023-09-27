@@ -168,7 +168,8 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 	bus = gst_element_get_bus(pipeline);
 	if (bus != NULL) {
 		// Bridge object pointer without touching reference count
-		gst_bus_add_watch(bus, (GstBusFunc) gstreamer_bus_cb, (__bridge gpointer) self);
+		// TODO: figure out bridging problem
+		// gst_bus_add_watch(bus, (GstBusFunc) gstreamer_bus_cb, (__bridge gpointer) self);
 		gst_object_unref(bus);
 	}
 
