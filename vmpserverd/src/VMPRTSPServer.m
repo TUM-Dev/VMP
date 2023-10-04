@@ -11,7 +11,7 @@
 #import "VMPRTSPServer.h"
 
 // Combined stream
-#import "VMPGMediaFactory.h"
+//#import "VMPGMediaFactory.h"
 #import "VMPGVideoConfig.h"
 
 // Generated project configuration
@@ -29,12 +29,21 @@
 // need to preformat the launch string.
 #define LAUNCH_VIDEO                                                                                                   \
 	@"intervideosrc channel=%@ ! queue ! nvvidconv ! video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080 ! "   \
-	@"nvv4l2h264enc maxperf-enable=1 bitrate=5000000 ! rtph264pay name=pay0 pt=96"
+	@"nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96"
 #else
 #define LAUNCH_VIDEO                                                                                                   \
-	@"intervideosrc channel=%@ ! video/x-raw, width=(int)1920, height=(int)1080 ! queue ! videoconvert ! x264enc ! "   \
+	@"intervideosrc channel=%@ ! video/x-raw, width=(int)1920, height=(int)1080 ! queue ! videoconvert ! x264enc bitrate=2500000 ! "   \
 	@"rtph264pay name=pay0 pt=96"
 #endif
+
+#define LAUNCH_COMB \
+	@"nvcompositor name=comp "          \
+	@"sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810 " \
+	@"sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 ! " \
+	@"video/x-raw(memory:NVMM),width=1920,height=1080 ! nvvidconv ! " \
+	@"nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96 " \
+	@"intervideosrc channel=%@ ! nvvidconv ! comp.sink_0 " \
+	@"intervideosrc channel=%@ ! nvvidconv ! comp.sink_1 "
 
 /* We added an audioresample element audioresample element to ensure that any input audio is resampled to match the
  * output rate properly, which is essential for maintaining AV sync and good quality over the RTSP stream.
@@ -45,7 +54,7 @@
  * enough for our use case.
  */
 #define LAUNCH_AUDIO                                                                                                   \
-	@"interaudiosrc channel=%@ ! queue ! audioconvert ! audioresample ! avenc_aac bitrate=128000 ! rtpmp4apay "        \
+	@"interaudiosrc channel=%@ ! voaacenc bitrate=96000 ! rtpmp4apay "        \
 	@"name=pay1 pt=97"
 
 // Combine the video and audio launch strings (separated by a space)
@@ -167,7 +176,7 @@
 
 			VMPInfo(@"Creating video test pipeline manager with width %@ and height %@", width, height);
 			launchArgs =
-				[NSString stringWithFormat:@"videotestsrc ! video/x-raw,width=%lu,height=%lu !  queue ! videoconvert ! "
+				[NSString stringWithFormat:@"videotestsrc is-live=1 ! video/x-raw,width=%lu,height=%lu ! "
 										   @"queue ! intervideosink channel=%@",
 										   [width unsignedLongValue], [height unsignedLongValue], channelName];
 
@@ -190,9 +199,9 @@
 
 			VMPInfo(@"Creating audio test pipeline manager");
 
-			launchArgs = [NSString stringWithFormat:@"audiotestsrc ! capsfilter "
+			launchArgs = [NSString stringWithFormat:@"audiotestsrc is-live=1 ! capsfilter "
 													@"caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! "
-													@"audioresample ! queue ! interaudiosink channel=%@",
+													@"queue ! interaudiosink channel=%@",
 													channelName];
 			VMPDebug(@"Creating pipeline manager with launch arguments: %@", launchArgs);
 			VMPPipelineManager *manager = [VMPPipelineManager managerWithLaunchArgs:launchArgs
@@ -259,7 +268,22 @@
 				CONFIG_ERROR(error, @"Combined mountpoint requires a secondary video channel")
 				return NO;
 			}
+			
+			GstRTSPMediaFactory *factory;
+			NSString *launchCommand;
 
+			factory = gst_rtsp_media_factory_new();
+			// Only create one pipeline and share it with other clients
+			gst_rtsp_media_factory_set_shared(factory, TRUE);
+
+			launchCommand = [NSString stringWithFormat:LAUNCH_COMB, videoChannel, secondaryVideoChannel];
+
+			VMPDebug(@"Creating combined mountpoint with launch command: %@", launchCommand);
+
+			gst_rtsp_media_factory_set_launch(factory, (const gchar *) [launchCommand UTF8String]);
+			gst_rtsp_mount_points_add_factory(_mountPoints, (const gchar *) [path UTF8String], factory);
+
+			/*
 			VMPMediaFactory *factory;
 			VMPVideoConfig *camera_config;
 			VMPVideoConfig *presentation_config;
@@ -290,6 +314,7 @@
 			g_object_unref(camera_config);
 			g_object_unref(presentation_config);
 			g_object_unref(output_config);
+			*/
 		} else if ([type isEqualToString:kVMPServerMountpointTypeSingle]) {
 			GstRTSPMediaFactory *factory;
 			NSString *launchCommand;

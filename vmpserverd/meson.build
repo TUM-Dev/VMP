@@ -60,7 +60,7 @@ add_project_arguments(filtered_objc_flags, language: 'objc')
 add_project_link_arguments(gnustep_base_libs, language: 'objc')
 
 source = [
-    'src/VMPGMediaFactory.c',
+    #'src/VMPGMediaFactory.c',
     'src/VMPGVideoConfig.c',
     # Objc files
     'src/main.m',
