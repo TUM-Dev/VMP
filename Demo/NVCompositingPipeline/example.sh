@@ -16,6 +16,6 @@ CAMERA_Y=0
 gst-launch-1.0 nvcompositor name=comp \
 	sink_0::xpos=$PRESENT_X sink_0::ypos=$PRESENT_Y sink_0::width=$PRESENT_WIDTH sink_0::height=$PRESENT_HEIGHT \
 	sink_1::xpos=$CAMERA_X sink_1::ypos=$CAMERA_Y sink_1::width=$CAMERA_WIDTH sink_1::height=$CAMERA_HEIGHT \
-	! "video/x-raw(memory:NVMM),width=$OUTPUT_WIDTH,height=$OUTPUT_HEIGHT" ! autovideosink \
-	videotestsrc is-live=true ! "video/x-raw,width=1440,height=810" ! nvvidconv ! comp.sink_0 \
+	! "video/x-raw(memory:NVMM),width=$OUTPUT_WIDTH,height=$OUTPUT_HEIGHT" ! nvoverlaysink \
+	videotestsrc is-live=true ! "video/x-raw,width=1920,height=1080" ! nvvidconv ! comp.sink_0 \
 	videotestsrc is-live=true pattern=ball ! "video/x-raw,width=480,height=270" ! nvvidconv ! comp.sink_1
