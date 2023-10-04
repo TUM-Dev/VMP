@@ -4,12 +4,13 @@
  * SPDX-License-Identifier: MIT
  */
 
-
 #include <gst/gst.h>
 #include "VMPGMediaFactory.h"
 
 // Generated project configuration
 #include "../build/config.h"
+#include "gst/gstelement.h"
+#include "gst/gstelementfactory.h"
 
 enum _VMPMediaFactoryProperty
 {
@@ -249,7 +250,7 @@ static void vmp_media_factory_finalize(GObject *object)
  * │                       │                                                          └─────────────────────┘
  * └───────────────────────┘
  */
-GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const GstRTSPUrl *url)
+GstElement *_create_element_sw(GstRTSPMediaFactory *factory, const GstRTSPUrl *url)
 {
     VMPMediaFactoryPrivate *priv;
     GstBin *bin;
@@ -274,11 +275,6 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
     GstElement *compositor_caps_filter;
     GstElement *aacenc, *x264enc;
     GstElement *rtph264pay, *rtpmp4apay;
-
-    // Nvidia Jetson specific elements
-#ifdef NV_JETSON
-    GstElement *nvvidconv;
-#endif
 
     priv = vmp_media_factory_get_instance_private(VMP_MEDIA_FACTORY(factory));
     bin = GST_BIN(gst_bin_new("combined_bin"));
@@ -338,26 +334,13 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
         return NULL;
     }
 
-#ifdef NV_JETSON
-    // Nvidia video buffer convert
-    nvvidconv = gst_element_factory_make("nvvidconv", NULL);
-    // Nvidia h264 hardware encoder
-    x264enc = gst_element_factory_make("nvv4l2h264enc", "x264enc");
-    if (!nvvidconv || !x264enc)
-    {
-        GST_ERROR("Failed to create elements required for Nvidia hardware encoding");
-        return NULL;
-    }
-
-    g_object_set(G_OBJECT(x264enc), "maxperf-enable", 1, NULL);
-#else
     x264enc = gst_element_factory_make("x264enc", "x264enc");
     if (!x264enc)
     {
         GST_ERROR("Failed to create elements required for software encoding");
         return NULL;
     }
-#endif
+
     g_object_set(G_OBJECT(x264enc), "bitrate", 5000000, NULL);
 
     // Set properties of compositor
@@ -415,10 +398,6 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
     gst_bin_add_many(GST_BIN(bin), compositor, compositor_caps_filter, x264enc, rtph264pay, NULL);
     gst_bin_add_many(GST_BIN(bin), audio_interpipe, audio_queue, audio_audioconvert, audio_buffer, aacenc, rtpmp4apay, NULL);
 
-#ifdef NV_JETSON
-    gst_bin_add_many(GST_BIN(bin), nvvidconv, NULL);
-#endif
-
     // Link elements
     if (!gst_element_link_many(camera_interpipe, camera_queue, camera_videoconvert, camera_videoscale, camera_caps_filter, NULL))
     {
@@ -431,19 +410,11 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
         return NULL;
     }
 
-#ifdef NV_JETSON
-    if (!gst_element_link_many(compositor, compositor_caps_filter, nvvidconv, x264enc, rtph264pay, NULL))
-    {
-        GST_ERROR("Failed to link compositor elements!");
-        return NULL;
-    }
-#else
     if (!gst_element_link_many(compositor, compositor_caps_filter, x264enc, rtph264pay, NULL))
     {
         GST_ERROR("Failed to link compositor elements!");
         return NULL;
     }
-#endif
 
     if (!gst_element_link_many(audio_interpipe, audio_queue, audio_audioconvert, audio_buffer, aacenc, rtpmp4apay, NULL))
     {
@@ -513,6 +484,109 @@ GstElement *vmp_media_factory_create_element(GstRTSPMediaFactory *factory, const
     g_object_unref(sink_presentation_pad);
 
     return GST_ELEMENT(bin);
+}
+
+/*
+    We decouple the incoming streams from the compositor pipeline, which is later managed by
+    the GStreamer RTSP server. This allows us to have different RTSP streams using the same
+    input sources.
+
+    This is done by using the GStreamer intervideo{src,sink} and interaudio{src,sink} elements.
+    These elements allow us to send raw buffers between pipelines, assuming the pipelines
+    are running in the same process.
+*/
+GstElement *_create_element_jetson(GstRTSPMediaFactory *factory, const GstRTSPUrl *url)
+{
+    //VMPMediaFactoryPrivate *priv;
+    //GstBin *bin;
+
+    GstElement *present_intervideosrc;
+    GstElement *present_queue;
+    GstElement *present_vidconv;
+
+    GstElement *camera_intervideosrc;
+    GstElement *camera_queue;
+    GstElement *camera_vidconv;
+
+    GstElement *audio_interaudiosrc;
+    GstElement *audio_queue;
+    GstElement *audio_audioconvert;
+
+    GstElement *audio_avenc_aac;
+    GstElement *audio_rtpmp4apay;
+
+    GstElement *comp_nvcompositor;
+    GstElement *comp_caps_filter;
+
+    GstElement *comp_nvv4l2h264enc;
+    GstElement *comp_rtph264pay;
+
+    /*
+        We use intervideosrc to retrieve the buffers from an external pipeline
+        identified by the channel name (later set via the 'channel' property).
+
+        The buffers are then converted to NVMM memory, required by the hardware
+        compositor.
+
+        Sadly, we do not get any specific error message on element creation failure.
+    */
+    present_intervideosrc = gst_element_factory_make("intervideosrc", "present_intervideosrc");
+    present_queue = gst_element_factory_make("queue", "present_queue");
+    present_vidconv = gst_element_factory_make("nvvidconv", "present_vidconv");
+    if (!present_intervideosrc || !present_queue || !present_vidconv)
+    {
+        GST_ERROR("Failed to create elements required for presentation stream processing");
+        return NULL;
+    }
+
+    camera_intervideosrc = gst_element_factory_make("intervideosrc", "camera_intervideosrc");
+    camera_queue = gst_element_factory_make("queue", "camera_queue");
+    camera_vidconv = gst_element_factory_make("nvvidconv", "camera_vidconv");
+    if (!camera_intervideosrc || !camera_queue || !camera_vidconv)
+    {
+        GST_ERROR("Failed to create elements required for camera stream processing");
+        return NULL;
+    }
+
+    /*
+        Similar to the presentation, and camera stream, we use interaudiosrc to retrieve
+        audio buffers from an external pipeline.
+
+        As Nvidia Jetson does not have support for hw-accelerated audio encoding, we use the
+        aac encoder provided by libav.
+
+        The rtpmp4apay element is responsible for encoding the audio into RTP packets (RFC 3640).
+    */
+    audio_interaudiosrc = gst_element_factory_make("interaudiosrc", "audio_interaudiosrc");
+    audio_queue = gst_element_factory_make("queue", "audio_queue");
+    audio_audioconvert = gst_element_factory_make("audioconvert", "audio_audioconvert");
+    audio_avenc_aac = gst_element_factory_make("avenc_aac", "audio_avaacenc");
+    audio_rtpmp4apay = gst_element_factory_make("rtpmp4apay", "audio_rtpmp4apay");
+    if (!audio_interaudiosrc || !audio_queue || !audio_audioconvert || !audio_avenc_aac || !audio_rtpmp4apay)
+    {
+        GST_ERROR("Failed to create elements required for audio stream processing");
+        return NULL;
+    }
+
+    /*
+        The compositor element is used to combine the two video streams into a single output.
+        Caps negotation between the two capsfilters and the compositor is done manually, after
+        the initial pad linking is done.
+
+        After compositing, the output is configured with the capsfilter element, encoded and
+        processed by the rtp element.
+    */
+    comp_nvcompositor = gst_element_factory_make("nvcompositor", "comp_nvcompositor");
+    comp_caps_filter = gst_element_factory_make("capsfilter", "comp_capsfilter");
+    comp_nvv4l2h264enc = gst_element_factory_make("nvv4l2h264enc", "comp_nvv4l2h264enc");
+    comp_rtph264pay = gst_element_factory_make("rtph264pay", "comp_rtph264pay");
+    if (!comp_nvcompositor || !comp_caps_filter || !comp_nvv4l2h264enc || !comp_rtph264pay) {
+        GST_ERROR("Failed to create elements required for compositing and output stream processing");
+        return NULL;
+    }
+
+
+    return NULL;
 }
 
 static void vmp_media_factory_add_configuration(VMPMediaFactory *bin, enum _VMPMediaFactoryConfigurationType type, VMPVideoConfig *output)
