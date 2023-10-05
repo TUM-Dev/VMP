@@ -32,17 +32,18 @@
 	@"nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96"
 #else
 #define LAUNCH_VIDEO                                                                                                   \
-	@"intervideosrc channel=%@ ! video/x-raw, width=(int)1920, height=(int)1080 ! queue ! videoconvert ! x264enc bitrate=2500000 ! "   \
+	@"intervideosrc channel=%@ ! video/x-raw, width=(int)1920, height=(int)1080 ! queue ! videoconvert ! x264enc "     \
+	@"bitrate=2500 ! "                                                                                                 \
 	@"rtph264pay name=pay0 pt=96"
 #endif
 
-#define LAUNCH_COMB \
-	@"nvcompositor name=comp "          \
-	@"sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810 " \
-	@"sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 ! " \
-	@"video/x-raw(memory:NVMM),width=1920,height=1080 ! nvvidconv ! " \
-	@"nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96 " \
-	@"intervideosrc channel=%@ ! nvvidconv ! comp.sink_0 " \
+#define LAUNCH_COMB                                                                                                    \
+	@"nvcompositor name=comp "                                                                                         \
+	@"sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810 "                                            \
+	@"sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 ! "                                        \
+	@"video/x-raw(memory:NVMM),width=1920,height=1080 ! nvvidconv ! "                                                  \
+	@"nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96 "                                    \
+	@"intervideosrc channel=%@ ! nvvidconv ! comp.sink_0 "                                                             \
 	@"intervideosrc channel=%@ ! nvvidconv ! comp.sink_1 "
 
 /* We added an audioresample element audioresample element to ensure that any input audio is resampled to match the
@@ -54,7 +55,7 @@
  * enough for our use case.
  */
 #define LAUNCH_AUDIO                                                                                                   \
-	@"interaudiosrc channel=%@ ! voaacenc bitrate=96000 ! rtpmp4apay "        \
+	@"interaudiosrc channel=%@ ! voaacenc bitrate=96000 ! rtpmp4apay "                                                 \
 	@"name=pay1 pt=97"
 
 // Combine the video and audio launch strings (separated by a space)
@@ -175,10 +176,9 @@
 			}
 
 			VMPInfo(@"Creating video test pipeline manager with width %@ and height %@", width, height);
-			launchArgs =
-				[NSString stringWithFormat:@"videotestsrc is-live=1 ! video/x-raw,width=%lu,height=%lu ! "
-										   @"queue ! intervideosink channel=%@",
-										   [width unsignedLongValue], [height unsignedLongValue], channelName];
+			launchArgs = [NSString stringWithFormat:@"videotestsrc is-live=1 ! video/x-raw,width=%lu,height=%lu ! "
+													@"queue ! intervideosink channel=%@",
+													[width unsignedLongValue], [height unsignedLongValue], channelName];
 
 			VMPDebug(@"Creating pipeline manager with launch arguments: %@", launchArgs);
 
@@ -268,7 +268,7 @@
 				CONFIG_ERROR(error, @"Combined mountpoint requires a secondary video channel")
 				return NO;
 			}
-			
+
 			GstRTSPMediaFactory *factory;
 			NSString *launchCommand;
 
