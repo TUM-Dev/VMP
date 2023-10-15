@@ -3,7 +3,7 @@ Language:        ObjC
 BasedOnStyle:    LLVM
 IndentWidth:     4
 TabWidth:        4
-ColumnLimit:     120
+ColumnLimit:     100
 UseTab:          Always
 
 # Objective-C specific settings

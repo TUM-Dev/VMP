@@ -30,27 +30,6 @@ NSString *const kVMPStatePlaying = @"playing";
 		VMPError(@"Error: %@", error);                                                                                 \
 	}
 
-static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineManager *mgr) {
-	GstObject *src = GST_MESSAGE_SRC(message);
-
-	gchar *debug;
-	GError *err;
-
-	switch (GST_MESSAGE_TYPE(message)) {
-	case GST_MESSAGE_EOS:
-		VMPInfo(@"End-of-stream reached for pipeline backing channel %@", [mgr channel]);
-		break;
-	case GST_MESSAGE_ERROR:
-		gst_message_parse_error(message, &err, &debug);
-		VMPError(@"Error received (channel %@) from element %s: %s. (Debug: %s)", [mgr channel], GST_OBJECT_NAME(src),
-				 err -> message, (debug) ? debug : "none");
-		break;
-	default:
-		break;
-	}
-	return TRUE;
-}
-
 // Redefine properties for readwrite access
 @interface VMPPipelineManager ()
 
@@ -351,36 +330,6 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, VMPPipelineMa
 - (void)stop {
 	[self _resetPipeline];
 	[_udevClient stopMonitor];
-}
-
-@end
-
-@implementation VMPALSAPipelineManager
-
-+ (instancetype)managerWithDevice:(NSString *)device
-						  channel:(NSString *)channel
-						 Delegate:(id<VMPPipelineManagerDelegate>)delegate {
-	return [[VMPALSAPipelineManager alloc] initWithDevice:device channel:channel Delegate:delegate];
-}
-
-- (instancetype)initWithDevice:(NSString *)device
-					   channel:(NSString *)channel
-					  Delegate:(id<VMPPipelineManagerDelegate>)delegate {
-	NSAssert(device, @"Device cannot be nil");
-	NSAssert(channel, @"Channel cannot be nil");
-
-	// TODO: Enforce S16LE right after alsasrc possible?
-	NSString *args =
-		[NSString stringWithFormat:@"alsasrc device=%@ ! queue ! audioconvert ! capsfilter "
-								   @"caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! audioresample ! "
-								   @"queue ! interaudiosink channel=%@",
-								   _device, [self channel]];
-
-	self = [super initWithLaunchArgs:args Channel:channel Delegate:delegate];
-	if (self) {
-		_device = device;
-	}
-	return self;
 }
 
 @end

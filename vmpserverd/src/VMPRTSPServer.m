@@ -11,7 +11,7 @@
 #import "VMPRTSPServer.h"
 
 // Combined stream
-//#import "VMPGMediaFactory.h"
+// #import "VMPGMediaFactory.h"
 #import "VMPGVideoConfig.h"
 
 // Generated project configuration
@@ -31,18 +31,20 @@
 	@"intervideosrc channel=%@ ! queue ! nvvidconv ! video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080 ! "   \
 	@"nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96"
 #else
+// x264enc uses kbit/s not bit/s
 #define LAUNCH_VIDEO                                                                                                   \
-	@"intervideosrc channel=%@ ! video/x-raw, width=(int)1920, height=(int)1080 ! queue ! videoconvert ! x264enc bitrate=2500000 ! "   \
+	@"intervideosrc channel=%@ ! video/x-raw, width=(int)1920, height=(int)1080 ! queue ! videoconvert ! x264enc "     \
+	@"bitrate=2500 ! "                                                                                                 \
 	@"rtph264pay name=pay0 pt=96"
 #endif
 
-#define LAUNCH_COMB \
-	@"nvcompositor name=comp "          \
-	@"sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810 " \
-	@"sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 ! " \
-	@"video/x-raw(memory:NVMM),width=1920,height=1080 ! nvvidconv ! " \
-	@"nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96 " \
-	@"intervideosrc channel=%@ ! nvvidconv ! comp.sink_0 " \
+#define LAUNCH_COMB                                                                                                    \
+	@"nvcompositor name=comp "                                                                                         \
+	@"sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810 "                                            \
+	@"sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 ! "                                        \
+	@"video/x-raw(memory:NVMM),width=1920,height=1080 ! nvvidconv ! "                                                  \
+	@"nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96 "                                    \
+	@"intervideosrc channel=%@ ! nvvidconv ! comp.sink_0 "                                                             \
 	@"intervideosrc channel=%@ ! nvvidconv ! comp.sink_1 "
 
 /* We added an audioresample element audioresample element to ensure that any input audio is resampled to match the
@@ -54,7 +56,7 @@
  * enough for our use case.
  */
 #define LAUNCH_AUDIO                                                                                                   \
-	@"interaudiosrc channel=%@ ! voaacenc bitrate=96000 ! rtpmp4apay "        \
+	@"interaudiosrc channel=%@ ! voaacenc bitrate=96000 ! rtpmp4apay "                                                 \
 	@"name=pay1 pt=97"
 
 // Combine the video and audio launch strings (separated by a space)
@@ -151,10 +153,6 @@
 
 			VMPInfo(@"Creating ALSA pipeline manager for device %@", device);
 
-			VMPALSAPipelineManager *manager = [VMPALSAPipelineManager managerWithDevice:device
-																				channel:channelName
-																			   Delegate:self];
-
 			if (![manager start]) {
 				// TODO: Get information out of manager
 				CONFIG_ERROR(error, @"Failed to start ALSA pipeline")
@@ -175,10 +173,9 @@
 			}
 
 			VMPInfo(@"Creating video test pipeline manager with width %@ and height %@", width, height);
-			launchArgs =
-				[NSString stringWithFormat:@"videotestsrc is-live=1 ! video/x-raw,width=%lu,height=%lu ! "
-										   @"queue ! intervideosink channel=%@",
-										   [width unsignedLongValue], [height unsignedLongValue], channelName];
+			launchArgs = [NSString stringWithFormat:@"videotestsrc is-live=1 ! video/x-raw,width=%lu,height=%lu ! "
+													@"queue ! intervideosink channel=%@",
+													[width unsignedLongValue], [height unsignedLongValue], channelName];
 
 			VMPDebug(@"Creating pipeline manager with launch arguments: %@", launchArgs);
 
@@ -268,7 +265,7 @@
 				CONFIG_ERROR(error, @"Combined mountpoint requires a secondary video channel")
 				return NO;
 			}
-			
+
 			GstRTSPMediaFactory *factory;
 			NSString *launchCommand;
 
@@ -282,39 +279,6 @@
 
 			gst_rtsp_media_factory_set_launch(factory, (const gchar *) [launchCommand UTF8String]);
 			gst_rtsp_mount_points_add_factory(_mountPoints, (const gchar *) [path UTF8String], factory);
-
-			/*
-			VMPMediaFactory *factory;
-			VMPVideoConfig *camera_config;
-			VMPVideoConfig *presentation_config;
-			VMPVideoConfig *output_config;
-			const gchar *camera_channel;
-			const gchar *presentation_channel;
-			const gchar *audio_channel;
-
-			// TODO: We should probably get these from the configuration
-			camera_config = vmp_video_config_new(480, 270);
-			presentation_config = vmp_video_config_new(1440, 810);
-			output_config = vmp_video_config_new(1920, 1080);
-
-			camera_channel = (const gchar *) [secondaryVideoChannel UTF8String];
-			presentation_channel = (const gchar *) [videoChannel UTF8String];
-			audio_channel = (const gchar *) [audioChannel UTF8String];
-
-			// Initialise the custom rtsp media factory for managing our own pipeline
-			factory = vmp_media_factory_new(camera_channel, presentation_channel, audio_channel, output_config,
-											camera_config, presentation_config);
-			// Set the shared property to true, so that the pipeline is shared between clients
-			gst_rtsp_media_factory_set_shared(GST_RTSP_MEDIA_FACTORY(factory), TRUE);
-
-			gst_rtsp_mount_points_add_factory(_mountPoints, (const gchar *) [path UTF8String],
-											  GST_RTSP_MEDIA_FACTORY(factory));
-
-			// Full transfer to VMPMediaFactory
-			g_object_unref(camera_config);
-			g_object_unref(presentation_config);
-			g_object_unref(output_config);
-			*/
 		} else if ([type isEqualToString:kVMPServerMountpointTypeSingle]) {
 			GstRTSPMediaFactory *factory;
 			NSString *launchCommand;

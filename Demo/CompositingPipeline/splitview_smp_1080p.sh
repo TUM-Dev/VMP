@@ -34,17 +34,12 @@ camera_height=270
 camera_x=$((output_width-camera_width))
 camera_y=0
 
-# Bilinear
-scaling=1
-
-presentation="$input1 ! videoscale method=$scaling ! video/x-raw, width=$presentation_width, height=$presentation_height, pixel-aspect-ratio=1/1 !  queue ! c.sink_1"
-camera="$input2 ! videoscale method=$scaling ! video/x-raw, width=$camera_width, height=$camera_height, pixel-aspect-ratio=1/1 ! queue ! c.sink_2"
+presentation="$input1 ! c.sink_0"
+camera="$input2 ! c.sink_1"
 
 gst-launch-1.0 compositor background=1 name=c \
-    sink_0::xpos=0 sink_0::ypos=0 \
-    sink_1::xpos=$presentation_x sink_1::ypos=$presentation_y \
-    sink_2::xpos=$camera_x sink_2::ypos=$camera_y \
-    ! videoconvert ! videoscale ! video/x-raw,width=$output_width,height=$output_height ! autovideosink \
+    sink_0::xpos=$presentation_x sink_0::ypos=$presentation_y sink_0::width=$presentation_width sink_0::height=$presentation_height sink_0::sizing-policy=1 \
+    sink_1::xpos=$camera_x sink_1::ypos=$camera_y sink_1::width=$camera_width sink_1::height=$camera_height sink_1::sizing-policy=1 \
+    ! video/x-raw,width=$output_width,height=$output_height ! autovideosink \
     $presentation \
     $camera
-
