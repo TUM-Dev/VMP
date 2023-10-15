@@ -28,4 +28,6 @@ typedef NS_ENUM(NSInteger, VMPErrorCode) {
 	VMPErrorCodeGStreamerStateChangeError = 7,
 	// Server configuration error. Used in VMPServerConfiguration initialiser.
 	VMPErrorCodeConfigurationError = 8,
+	// Profile plist parsing error. Used in VMPProfile initialiser.
+	VMPErrorCodeProfileError = 9
 };
