@@ -85,7 +85,7 @@ extern NSString *kVMPServerChannelTypeCustom;
 	@brief Creates a configuration from the property list
 
 	@return A configuration object if parsing was successful. Check for
-	the return value and the error object,
+	the return value and the error object.
 */
 + (instancetype)configurationWithPlist:(NSString *)path withError:(NSError **)error;
 
