@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>title</key>
+	<string>Nvidia Deepstream Profile</string>
+	<key>identifier</key>
+	<string>com.hugomelder.deepstream-6</string>
+	<key>version</key>
+	<string>0.1.0</string>
+	<key>description</key>
+	<string>AV pipeline configuration optimised for Nvidia platforms supporting the Deepstream framework.</string>
+	<key>supportedPlatforms</key>
+	<array>
+		<string>deepstream-6</string>
+	</array>
+
+	<key>mountpoints</key>
+	<dict>
+		<key>single</key>
+		<dict>
+			<!--
+				TODO: Keep aspect ratio of video when converting to 1080p 16:9
+				stream. nvvidconv does not have a property to enforce a sizing policy.
+			-->
+			<key>default</key>
+			<string>intervideosrc channel={VIDEOCHANNEL.0} ! nvvidconv !
+ video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080 !
+ nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96</string>
+			<key>audioProviders</key>
+			<dict>
+				<!--
+					Nvidia Deepstream does not support hardware audio encoders/decoders.
+					We use a software encoder to encode the audio stream into AAC-LC.
+				-->
+				<key>pulse</key>
+				<string>pulsesrc device={PADEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
+			</dict>
+		</dict>
+		<key>combined</key>
+		<dict>
+			<key>default</key>
+			<!--
+				TODO: The nvcompositor does not have the sizing-policy pad property that exists
+				with the default GStreamer "compositor" element. We need to find a way to keep
+				the aspect ratio of the video streams.
+			-->
+			<string>nvcompositor name=comp
+ sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810
+ sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 !
+ video/x-raw(memory:NVMM),width=1920,height=1080 ! nvvidconv !
+ nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96 
+ intervideosrc channel={VIDEOCHANNEL.0} ! nvvidconv ! comp.sink_0
+ intervideosrc channel={VIDEOCHANNEL.1} ! nvvidconv ! comp.sink_1</string>
+			<key>audioProviders</key>
+			<dict>
+				<key>pulse</key>
+				<string>pulsesrc device={PADEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
+			</dict>
+		</dict>
+	</dict>
+
+	<key>channels</key>
+	<dict>
+		<key>v4l2</key>
+		<string>v4l2src device={V4L2DEV} ! videoconvert ! intervideosink channel={VIDEOCHANNEL.0}</string>
+		<key>videoTest</key>
+		<string>videotestsrc is-live=1 ! video/x-raw,width={WIDTH},height={HEIGHT} !
+ intervideosink channel={VIDEOCHANNEL.0}</string>
+	</dict>
+</dict>
