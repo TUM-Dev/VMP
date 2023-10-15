@@ -165,6 +165,7 @@ compile_commands.json
 
 # Build Artefacts
 vmpserverd/build/
+vmpserverd/.cache
 vmp-http-spec/vmp-http-spec.json
 .vscode/
 .gitignore
