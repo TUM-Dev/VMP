@@ -25,6 +25,14 @@
 @property (nonatomic, readonly) VMPProfile *currentProfile;
 @property (nonatomic, strong) NSArray<VMPProfile *> *availableProfiles;
 
+/**
+	@brief Autodetects the runtimePlatform during initialisation
+
+	@param path The path to the profile directory
+	@param error An error pointer
+*/
++ (instancetype)managerWithPath:(NSString *)path error:(NSError **)error;
+
 + (instancetype)managerWithPath:(NSString *)path
 				runtimePlatform:(NSString *)platform
 						  error:(NSError **)error;
@@ -134,4 +142,8 @@
 	profile for the runtime platform has the highest score.
 */
 - (NSInteger)compatiblityScoreForPlatform:(NSString *)platform;
+
+- (NSString *)parsePipeline:(NSString *)pipeline
+					   vars:(NSDictionary<NSString *, NSString *> *)varDict
+					  error:(NSError **)error;
 @end

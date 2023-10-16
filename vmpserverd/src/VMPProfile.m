@@ -17,6 +17,8 @@
 							   userInfo:@{NSLocalizedDescriptionKey : msg}];                       \
 	}
 
+static NSString *deviceTreeModelPath = @"/proc/device-tree/model";
+
 @implementation VMPProfile
 
 + (instancetype)profileWithPlist:(NSString *)plistPath error:(NSError **)error {
@@ -95,6 +97,12 @@
 	return -1;
 }
 
+- (NSString *)parsePipeline:(NSString *)pipeline
+					   vars:(NSDictionary<NSString *, NSString *> *)varDict
+					  error:(NSError **)error {
+	return nil;
+}
+
 @end
 
 // Declare runtimePlatform and currentProfile rw for internal use
@@ -106,6 +114,32 @@
 @end
 
 @implementation VMPProfileManager
+
++ (instancetype)managerWithPath:(NSString *)path error:(NSError **)error {
+	NSFileManager *mgr;
+
+	mgr = [NSFileManager defaultManager];
+
+	// Currently, we only detect the Jetson Nano based on the device tree model entry.
+	if ([mgr fileExistsAtPath:deviceTreeModelPath]) {
+		NSString *model;
+
+		model = [NSString stringWithContentsOfFile:deviceTreeModelPath
+										  encoding:NSUTF8StringEncoding
+											 error:error];
+		if (!model) {
+			return nil;
+		}
+
+		if ([model containsString:@"NVIDIA Jetson"]) {
+			return [VMPProfileManager managerWithPath:path
+									  runtimePlatform:@"deepstream-6"
+												error:error];
+		}
+	}
+
+	return [VMPProfileManager managerWithPath:path runtimePlatform:@"generic" error:error];
+}
 
 + (instancetype)managerWithPath:(NSString *)path
 				runtimePlatform:(NSString *)platform
