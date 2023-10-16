@@ -14,7 +14,7 @@ void VMPCritical(NSString *format, ...);
 
 #define VMP_ASSERT(condition, string, ...)                                                         \
 	if (!(condition)) {                                                                            \
-		VMPCritical(string, __VA_ARGS__);                                                          \
+		VMPCritical(string, ##__VA_ARGS__);                                                        \
 		abort();                                                                                   \
 	}
 
