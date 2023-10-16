@@ -3,6 +3,12 @@
 <plist version="1.0">
 <dict>
     <!--
+        Profiles describe platform-dependent pipelines used for stream processing.
+    -->
+    <key>profileConfigDir</key>
+    <string>/usr/share/vmpserverd/profiles</string>
+
+    <!--
         Specify the address and port of the RTSP server here.
         The rtspAddress is the IP address of the interface to bind to.
     -->
