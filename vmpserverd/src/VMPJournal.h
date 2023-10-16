@@ -12,11 +12,10 @@ void VMPWarn(NSString *format, ...);
 void VMPError(NSString *format, ...);
 void VMPCritical(NSString *format, ...);
 
-// Assertions
-#define VMP_ASSERT(condition, string)                                                                                  \
-	if (!(condition)) {                                                                                                \
-		VMPCritical(string);                                                                                           \
-		abort();                                                                                                       \
+#define VMP_ASSERT(condition, string, ...)                                                         \
+	if (!(condition)) {                                                                            \
+		VMPCritical(string, __VA_ARGS__);                                                          \
+		abort();                                                                                   \
 	}
 
 /**
