@@ -11,33 +11,33 @@
 /**
 	Keys for the configuration property list
  */
-extern NSString *kVMPServerMountPointsKey;
-extern NSString *kVMPServerRTSPPortKey;
-extern NSString *kVMPServerRTSPAddressKey;
+extern NSString *const kVMPServerMountPointsKey;
+extern NSString *const kVMPServerProfileConfigDirKey;
+extern NSString *const kVMPServerRTSPPortKey;
+extern NSString *const kVMPServerRTSPAddressKey;
 
-extern NSString *kVMPServerMountPointsPathKey;
-extern NSString *kVMPServerMountPointsTypeKey;
-extern NSString *kVMPServerMountPointsNameKey;
+extern NSString *const kVMPServerMountPointsPathKey;
+extern NSString *const kVMPServerMountPointsTypeKey;
+extern NSString *const kVMPServerMountPointsNameKey;
 
-extern NSString *kVMPServerMountpointTypeSingle;
-extern NSString *kVMPServerMountpointTypeCombined;
+extern NSString *const kVMPServerMountpointTypeSingle;
+extern NSString *const kVMPServerMountpointTypeCombined;
 
 // This is the second channel for the combined view (e.g. the camera channel)
-extern NSString *kVMPServerMountpointSecondaryVideoChannelKey;
+extern NSString *const kVMPServerMountpointSecondaryVideoChannelKey;
 
-extern NSString *kVMPServerMountpointVideoChannelKey;
-extern NSString *kVMPServerMountpointAudioChannelKey;
+extern NSString *const kVMPServerMountpointVideoChannelKey;
+extern NSString *const kVMPServerMountpointAudioChannelKey;
 
-extern NSString *kVMPServerChannelConfigurationKey;
-extern NSString *kVMPServerChannelTypeKey;
-extern NSString *kVMPServerChannelNameKey;
-extern NSString *kVMPServerChannelPropertiesKey;
+extern NSString *const kVMPServerChannelConfigurationKey;
+extern NSString *const kVMPServerChannelTypeKey;
+extern NSString *const kVMPServerChannelNameKey;
+extern NSString *const kVMPServerChannelPropertiesKey;
 
-extern NSString *kVMPServerChannelTypeVideoTest;
-extern NSString *kVMPServerChannelTypeAudioTest;
-extern NSString *kVMPServerChannelTypeV4L2;
-extern NSString *kVMPServerChannelTypeALSA;
-extern NSString *kVMPServerChannelTypeCustom;
+extern NSString *const kVMPServerChannelTypeVideoTest;
+extern NSString *const kVMPServerChannelTypeAudioTest;
+extern NSString *const kVMPServerChannelTypePulse;
+extern NSString *const kVMPServerChannelTypeV4L2;
 
 /**
 	@brief Server configuration class
@@ -46,6 +46,12 @@ extern NSString *kVMPServerChannelTypeCustom;
 	reading a property list file.
 */
 @interface VMPServerConfiguration : NSObject
+
+/**
+	@brief Path to the profile configuration directory
+*/
+@property (nonatomic, strong) NSString *profileConfigDir;
+
 /**
 	@brief Path to the PropertyList configuration file
 */
@@ -97,14 +103,17 @@ extern NSString *kVMPServerChannelTypeCustom;
 	@brief Configures the RTSP server, and HTTP server.
 
 	This class is the main entry point for the server.
+	Configuration independent of the RTSP server is done here.
 */
 @interface VMPServerMain : NSObject
 
 @property (nonatomic, readonly) VMPServerConfiguration *configuration;
 
-+ (instancetype)serverWithConfiguration:(VMPServerConfiguration *)configuration;
++ (instancetype)serverWithConfiguration:(VMPServerConfiguration *)configuration
+								  error:(NSError **)error;
 
-- (instancetype)initWithConfiguration:(VMPServerConfiguration *)configuration;
+- (instancetype)initWithConfiguration:(VMPServerConfiguration *)configuration
+								error:(NSError **)error;
 
 /**
 	@brief Start the server
