@@ -70,7 +70,17 @@ source = [
     'src/VMPJournal.m',
     'src/VMPHTTPServer.m',
     'src/NSString+substituteVariables.m',
+    # Models
+    'src/models/VMPConfigChannelModel.m',
+    'src/models/VMPConfigMountpointModel.m',
+    'src/models/VMPProfileModel.m',
+    'src/models/VMPConfigModel.m',
 ]
+
+include_dirs = include_directories(
+    'src',
+    'src/models'
+)
 
 dependencies = [
     glib_dep,
@@ -106,4 +116,4 @@ configure_file(input : 'config.h.in',
                output : 'config.h',
                configuration : conf_data)
 
-executable('vmpserverd', source, dependencies: dependencies)
+executable('vmpserverd', source, dependencies: dependencies, include_directories: include_dirs)

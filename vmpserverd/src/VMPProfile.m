@@ -7,8 +7,6 @@
 #import "VMPProfile.h"
 #import "VMPErrors.h"
 #import "VMPJournal.h"
-#include <Foundation/NSArray.h>
-#include <Foundation/NSFileManager.h>
 
 #define WRITE_ERROR(err, msg)                                                                      \
 	if (err) {                                                                                     \
@@ -26,11 +24,15 @@ static NSString *deviceTreeModelPath = @"/proc/device-tree/model";
 }
 
 - (instancetype)initWithPlist:(NSString *)plistPath error:(NSError **)error {
-	VMP_ASSERT(plistPath, @"plistPath cannot be nil")
+	VMP_ASSERT(plistPath, @"plistPath cannot be nil");
 
 	self = [super init];
 	if (self) {
-		NSDictionary *plist = [NSDictionary dictionaryWithContentsOfFile:plistPath];
+		NSDictionary *plist;
+		NSDictionary<NSString *, NSDictionary *> *mountpointData;
+		NSMutableDictionary<NSString *, VMPProfileMountpoint *> *mutableMountpoints;
+
+		plist = [NSDictionary dictionaryWithContentsOfFile:plistPath];
 		if (!plist) {
 			if (error) {
 				*error = [NSError errorWithDomain:VMPErrorDomain
@@ -55,11 +57,32 @@ static NSString *deviceTreeModelPath = @"/proc/device-tree/model";
 			WRITE_ERROR(error, @"Missing key in profile plist: supportedPlatforms");
 			return nil;
 		}
-		_mountpoints = plist[@"mountpoints"];
-		if (!_mountpoints) {
+		mountpointData = plist[@"mountpoints"];
+		if (!mountpointData) {
 			WRITE_ERROR(error, @"Missing key in profile plist: mountpoints");
 			return nil;
 		}
+
+		/* Iterate over the raw mountpoint data from the plist, instantiate VMPProfileMountpoint
+		 * objects for each mountpoint, and store them in the _mountpoints dictionary.
+		 */
+		mutableMountpoints = [NSMutableDictionary dictionaryWithCapacity:[mountpointData count]];
+		[mountpointData
+			enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSDictionary *obj, BOOL *stop) {
+				NSError *err;
+				VMPProfileMountpoint *mp;
+
+				mp = [VMPProfileMountpoint mountpointWithDictionary:obj error:&err];
+				if (!mp) {
+					*stop = YES;
+					VMPError(@"Error while parsing mountpoint %@: %@", key, err);
+					return;
+				}
+
+				[mutableMountpoints setObject:mp forKey:key];
+			}];
+		// Save the created mountpoints in the immutable _mountpoints dictionary
+		_mountpoints = [NSDictionary dictionaryWithDictionary:mutableMountpoints];
 
 		_channels = plist[@"channels"];
 		if (!_channels) {
@@ -97,10 +120,31 @@ static NSString *deviceTreeModelPath = @"/proc/device-tree/model";
 	return -1;
 }
 
-- (NSString *)parsePipeline:(NSString *)pipeline
-					   vars:(NSDictionary<NSString *, NSString *> *)varDict
-					  error:(NSError **)error {
-	return nil;
+@end
+
+@implementation VMPProfileMountpoint
+
++ (instancetype)mountpointWithDictionary:(NSDictionary *)dict error:(NSError **)error {
+	return [[VMPProfileMountpoint alloc] initWithDictionary:dict error:error];
+}
+
+- (instancetype)initWithDictionary:(NSDictionary *)dict error:(NSError **)error {
+	self = [super init];
+	if (self) {
+		_defaultPipeline = dict[@"defaultPipeline"];
+		if (!_defaultPipeline) {
+			WRITE_ERROR(error, @"Missing key in mountpoint plist: defaultPipeline");
+			return nil;
+		}
+
+		_audioProviders = dict[@"audioProviders"];
+		if (!_audioProviders) {
+			WRITE_ERROR(error, @"Missing key in mountpoint plist: audioProviders");
+			return nil;
+		}
+	}
+
+	return self;
 }
 
 @end

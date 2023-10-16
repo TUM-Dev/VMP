@@ -44,6 +44,21 @@
 @end
 
 /**
+	@brief Representation of a single mountpoint with a default pipeline and audioProviders
+*/
+@interface VMPProfileMountpoint : NSObject
+
+@property (nonatomic, strong) NSString *defaultPipeline;
+
+@property (nonatomic, strong) NSDictionary<NSString *, NSString *> *audioProviders;
+
++ (instancetype)mountpointWithDictionary:(NSDictionary *)dict error:(NSError **)error;
+
+- (instancetype)initWithDictionary:(NSDictionary *)dict error:(NSError **)error;
+
+@end
+
+/**
 	@brief Class holding information about a profile
 
 	Profiles define the GStreamer pipelines for
@@ -102,7 +117,7 @@
 	  integers, starting at 0
 	- {PADEV} - Pulse Audio (PA) Device for audio pipelines
 */
-@property (nonatomic, strong) NSDictionary<NSString *, NSDictionary *> *mountpoints;
+@property (nonatomic, strong) NSDictionary<NSString *, VMPProfileMountpoint *> *mountpoints;
 
 /**
 	@brief Pipeline configuration for video channels
@@ -143,7 +158,4 @@
 */
 - (NSInteger)compatiblityScoreForPlatform:(NSString *)platform;
 
-- (NSString *)parsePipeline:(NSString *)pipeline
-					   vars:(NSDictionary<NSString *, NSString *> *)varDict
-					  error:(NSError **)error;
 @end
