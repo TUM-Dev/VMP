@@ -60,17 +60,16 @@ add_project_arguments(filtered_objc_flags, language: 'objc')
 add_project_link_arguments(gnustep_base_libs, language: 'objc')
 
 source = [
-    #'src/VMPGMediaFactory.c',
-    'src/VMPGVideoConfig.c',
-    # Objc files
     'src/main.m',
     'src/VMPServerMain.m',
     'src/VMPRTSPServer.m',
+    'src/VMPProfile.m',
     'src/VMPUdevClient.m',
     'src/VMPPipelineManager.m',
     'src/VMPErrors.m',
     'src/VMPJournal.m',
     'src/VMPHTTPServer.m',
+    'src/NSString+substituteVariables.m',
 ]
 
 dependencies = [
