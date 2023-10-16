@@ -8,6 +8,13 @@
 
 extern NSString *const VMPErrorDomain;
 
+#define VMP_FAST_ERROR(err, errorCode, description, ...)                                           \
+	if (err) {                                                                                     \
+		NSString *message = [NSString stringWithFormat:description, ##__VA_ARGS__];                \
+		*err = [NSError errorWithDomain:VMPErrorDomain                                             \
+								   code:errorCode                                                  \
+							   userInfo:@{NSLocalizedDescriptionKey : message}];                   \
+	}
 /**
 @brief Error codes for the VMPErrorDomain
 */
@@ -31,5 +38,7 @@ typedef NS_ENUM(NSInteger, VMPErrorCode) {
 	/// Profile plist parsing error. Used in VMPProfile initialiser.
 	VMPErrorCodeProfileError = 9,
 	/// Server initialisation error. Used in VMPServerMain.
-	VMPErrorCodeServerInitError = 10
+	VMPErrorCodeServerInitError = 10,
+	/// Property list parsing error.
+	VMPErrorCodePropertyListError = 11
 };
