@@ -26,8 +26,10 @@ typedef NS_ENUM(NSInteger, VMPErrorCode) {
 	VMPErrorCodeUdevMonitorError = 5,
 	VMPErrorCodeGStreamerParseError = 6,
 	VMPErrorCodeGStreamerStateChangeError = 7,
-	// Server configuration error. Used in VMPServerConfiguration initialiser.
+	/// Server configuration error. Used in VMPServerConfiguration initialiser.
 	VMPErrorCodeConfigurationError = 8,
-	// Profile plist parsing error. Used in VMPProfile initialiser.
-	VMPErrorCodeProfileError = 9
+	/// Profile plist parsing error. Used in VMPProfile initialiser.
+	VMPErrorCodeProfileError = 9,
+	/// Server initialisation error. Used in VMPServerMain.
+	VMPErrorCodeServerInitError = 10
 };
