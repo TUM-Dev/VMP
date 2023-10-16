@@ -34,7 +34,7 @@
 					We use a software encoder to encode the audio stream into AAC-LC.
 				-->
 				<key>pulse</key>
-				<string>pulsesrc device={PADEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
+				<string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
 			</dict>
 		</dict>
 		<key>combined</key>
@@ -55,7 +55,7 @@
 			<key>audioProviders</key>
 			<dict>
 				<key>pulse</key>
-				<string>pulsesrc device={PADEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
+				<string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
 			</dict>
 		</dict>
 	</dict>

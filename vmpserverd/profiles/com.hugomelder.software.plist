@@ -33,7 +33,7 @@
 		Currently, the following variables are available:
 		- {VIDEOCHANNEL.%u}: The video channel name. Enumerated using unsigned
 		integers, starting at 0 (e.g. {VIDEOCHANNEL.0})
-		- {PADEV}: The pulse audio device name
+		- {PULSEDEV}: The pulse audio device name
 		(e.g. alsa_input.pci-0000_00_03.0.analog-stereo)
 
 		'pactl list sources short' lists all availables sources. The second column
@@ -55,7 +55,7 @@
 			<key>audioProviders</key>
 			<dict>
 				<key>pulse</key>
-				<string>pulsesrc device={PADEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
+				<string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
 			</dict>
 		</dict>
 		<key>combined</key>
@@ -70,7 +70,10 @@
 			<key>audioProviders</key>
 			<dict>
 				<key>pulse</key>
-				<string>pulsesrc device={PADEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
+				<string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
+				<key>audioTest</key>
+				<string>audiotestsrc is-live=1 ! capsfilter caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2
+ ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
 			</dict>
 		</dict>
 	</dict>
