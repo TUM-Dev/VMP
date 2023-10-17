@@ -28,6 +28,9 @@
 }
 
 - (id)propertyList {
+	NSMutableArray *exportedMountpoints;
+	NSMutableArray *exportedChannels;
+
 	VMP_ASSERT(_name, @"name is nil");
 	VMP_ASSERT(_profileDirectory, @"profileDirectory is nil");
 	VMP_ASSERT(_rtspAddress, @"rtspAddress is nil");
@@ -35,13 +38,23 @@
 	VMP_ASSERT(_mountpoints, @"mountpoints is nil");
 	VMP_ASSERT(_channels, @"channels is nil");
 
+	exportedMountpoints = [NSMutableArray array];
+	exportedChannels = [NSMutableArray array];
+
+	for (VMPConfigMountpointModel *mountpoint in _mountpoints) {
+		[exportedMountpoints addObject:[mountpoint propertyList]];
+	}
+	for (VMPConfigChannelModel *channel in _channels) {
+		[exportedChannels addObject:[channel propertyList]];
+	}
+
 	return @{
 		@"name" : _name,
 		@"profileDirectory" : _profileDirectory,
 		@"rtspAddress" : _rtspAddress,
 		@"rtspPort" : _rtspPort,
-		@"mountpoints" : _mountpoints,
-		@"channels" : _channels
+		@"mountpoints" : exportedMountpoints,
+		@"channels" : exportedChannels
 	};
 }
 
