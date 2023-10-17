@@ -14,6 +14,8 @@ NSString *const VMPConfigChannelTypeVideoTest = @"videoTest";
 NSString *const VMPConfigChannelTypeAudioTest = @"audioTest";
 NSString *const VMPConfigChannelTypePulseAudio = @"pulse";
 
+NSString *const VMPChannelPropertiesDeviceKey = @"device";
+
 @implementation VMPConfigChannelModel
 
 - (id)initWithPropertyList:(id)propertyList error:(NSError **)error {

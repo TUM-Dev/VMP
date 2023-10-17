@@ -17,6 +17,8 @@ extern NSString *const VMPConfigChannelTypeAudioTest;
 /// Channel for capturing PulseAudio devices
 extern NSString *const VMPConfigChannelTypePulseAudio;
 
+extern NSString *const VMPChannelPropertiesDeviceKey;
+
 /**
 	@brief Representation of a single channel
 
@@ -54,7 +56,7 @@ extern NSString *const VMPConfigChannelTypePulseAudio;
 
 	These properties are specific to the channel type (e.g. "device" for V4L2)
 */
-@property (nonatomic, strong) NSDictionary<NSString *, NSString *> *properties;
+@property (nonatomic, strong) NSDictionary<NSString *, id> *properties;
 
 - (id)initWithPropertyList:(id)propertyList error:(NSError **)error;
 

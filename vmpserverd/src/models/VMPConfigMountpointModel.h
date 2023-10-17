@@ -19,7 +19,7 @@ extern NSString *const VMPConfigMountpointTypeCombined;
 
 @property (nonatomic, strong) NSString *type;
 
-@property (nonatomic, strong) NSDictionary<NSString *, NSString *> *properties;
+@property (nonatomic, strong) NSDictionary<NSString *, id> *properties;
 
 - (id)initWithPropertyList:(id)propertyList error:(NSError **)error;
 
