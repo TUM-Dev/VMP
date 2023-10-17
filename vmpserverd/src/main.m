@@ -14,13 +14,13 @@
 #import "VMPJournal.h"
 #import "VMPServerMain.h"
 
-#define DEFAULT_PATHS @[ @"~/.config/vmpserverd", @"/etc/vmpserverd" ]
+#define DEFAULT_PATHS @[ @"~/.config/vmpserverd", @"/usr/share/vmpserverd" ]
 
-#define USAGE_MSG                                                                                                      \
-	"Usage: vmpserverd [OPTION]...\n"                                                                                  \
-	"\n"                                                                                                               \
-	"  -h, --help\t\t\tPrint this help message\n"                                                                      \
-	"  -v, --version\t\t\tPrint version information\n"                                                                 \
+#define USAGE_MSG                                                                                  \
+	"Usage: vmpserverd [OPTION]...\n"                                                              \
+	"\n"                                                                                           \
+	"  -h, --help\t\t\tPrint this help message\n"                                                  \
+	"  -v, --version\t\t\tPrint version information\n"                                             \
 	"  -c, --config=PATH\t\tPath to configuration file\n"
 
 static void version(void) {
@@ -36,7 +36,10 @@ int main(int argc, char *argv[]) {
 	@autoreleasepool {
 		NSRunLoop *runLoop;
 		NSString *selectedPath;
-		NSArray *paths = DEFAULT_PATHS;
+		NSError *error;
+		NSArray<NSString *> *paths = DEFAULT_PATHS;
+		NSDictionary *plist;
+		VMPConfigModel *configuration;
 
 		struct option longopts[] = {{"help", no_argument, NULL, 'h'},
 									{"version", no_argument, NULL, 'v'},
@@ -72,6 +75,7 @@ int main(int argc, char *argv[]) {
 			// Check if file at path exists
 			if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
 				selectedPath = path;
+				break;
 			}
 		}
 
@@ -80,17 +84,21 @@ int main(int argc, char *argv[]) {
 			return EXIT_FAILURE;
 		}
 
+		plist = [NSDictionary dictionaryWithContentsOfFile:selectedPath];
+		if (!plist) {
+			VMPCritical(@"Failed to read plist at path '%@'", selectedPath);
+			return EXIT_FAILURE;
+		}
+
 		// Create configuration from file
-		NSError *error;
-		VMPServerConfiguration *configuration = [VMPServerConfiguration configurationWithPlist:selectedPath
-																					 withError:&error];
+		configuration = [[VMPConfigModel alloc] initWithPropertyList:plist error:&error];
 		if (!configuration) {
 			VMPCritical(@"Failed to create configuration from file %@: %@", selectedPath, error);
 			return EXIT_FAILURE;
 		}
 
 		// Create server
-		VMPServerMain *server = [VMPServerMain serverWithConfiguration:configuration];
+		VMPServerMain *server = [VMPServerMain serverWithConfiguration:configuration error:&error];
 		if (!server) {
 			VMPCritical(@"Failed to create server from configuration: %@", error);
 			return EXIT_FAILURE;

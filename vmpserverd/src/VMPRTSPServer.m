@@ -7,60 +7,72 @@
 #import <glib.h>
 #import <gst/rtsp-server/rtsp-server.h>
 
+#import "NSString+substituteVariables.h"
+
+#import "VMPConfigChannelModel.h"
+#import "VMPConfigModel.h"
+#import "VMPConfigMountpointModel.h"
+
 #import "VMPJournal.h"
 #import "VMPRTSPServer.h"
-
-// Combined stream
-// #import "VMPGMediaFactory.h"
-#import "VMPGVideoConfig.h"
 
 // Generated project configuration
 #include "../build/config.h"
 
-#define CONFIG_ERROR(error, description)                                                                               \
-	VMPError(description);                                                                                             \
-	if (error) {                                                                                                       \
-		NSDictionary *userInfo = @{NSLocalizedDescriptionKey : description};                                           \
-		*error = [NSError errorWithDomain:VMPErrorDomain code:VMPErrorCodeConfigurationError userInfo:userInfo];       \
+#define CONFIG_ERROR(error, description)                                                           \
+	VMPError(description);                                                                         \
+	if (error) {                                                                                   \
+		NSDictionary *userInfo = @{NSLocalizedDescriptionKey : description};                       \
+		*error = [NSError errorWithDomain:VMPErrorDomain                                           \
+									 code:VMPErrorCodeConfigurationError                           \
+								 userInfo:userInfo];                                               \
 	}
 
 #ifdef NV_JETSON
-// TODO: Make explicit width and height argument configurable. As we only need to set this explicitly for the Jetson, we
-// need to preformat the launch string.
-#define LAUNCH_VIDEO                                                                                                   \
-	@"intervideosrc channel=%@ ! queue ! nvvidconv ! video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080 ! "   \
+// TODO: Make explicit width and height argument configurable. As we only need to set this
+// explicitly for the Jetson, we need to preformat the launch string.
+#define LAUNCH_VIDEO                                                                               \
+	@"intervideosrc channel=%@ ! queue ! nvvidconv ! video/x-raw(memory:NVMM), width=(int)1920, "  \
+	@"height=(int)1080 ! "                                                                         \
 	@"nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96"
 #else
 // x264enc uses kbit/s not bit/s
-#define LAUNCH_VIDEO                                                                                                   \
-	@"intervideosrc channel=%@ ! video/x-raw, width=(int)1920, height=(int)1080 ! queue ! videoconvert ! x264enc "     \
-	@"bitrate=2500 ! "                                                                                                 \
+#define LAUNCH_VIDEO                                                                               \
+	@"intervideosrc channel=%@ ! video/x-raw, width=(int)1920, height=(int)1080 ! queue ! "        \
+	@"videoconvert ! x264enc "                                                                     \
+	@"bitrate=2500 ! "                                                                             \
 	@"rtph264pay name=pay0 pt=96"
 #endif
 
-#define LAUNCH_COMB                                                                                                    \
-	@"nvcompositor name=comp "                                                                                         \
-	@"sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810 "                                            \
-	@"sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 ! "                                        \
-	@"video/x-raw(memory:NVMM),width=1920,height=1080 ! nvvidconv ! "                                                  \
-	@"nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96 "                                    \
-	@"intervideosrc channel=%@ ! nvvidconv ! comp.sink_0 "                                                             \
+#define LAUNCH_COMB                                                                                \
+	@"nvcompositor name=comp "                                                                     \
+	@"sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810 "                        \
+	@"sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 ! "                    \
+	@"video/x-raw(memory:NVMM),width=1920,height=1080 ! nvvidconv ! "                              \
+	@"nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96 "                \
+	@"intervideosrc channel=%@ ! nvvidconv ! comp.sink_0 "                                         \
 	@"intervideosrc channel=%@ ! nvvidconv ! comp.sink_1 "
 
-/* We added an audioresample element audioresample element to ensure that any input audio is resampled to match the
- * output rate properly, which is essential for maintaining AV sync and good quality over the RTSP stream.
+/* We added an audioresample element audioresample element to ensure that any input audio is
+ * resampled to match the output rate properly, which is essential for maintaining AV sync and good
+ * quality over the RTSP stream.
  *
  * NOTE: This needs to be tested, and removed it produces to much overhead.
  *
- * We encode the audio stream into AAC-LC (default profile of avenc_aac) with a bitrate of 128kbps, which should be
- * enough for our use case.
+ * We encode the audio stream into AAC-LC (default profile of avenc_aac) with a bitrate of 128kbps,
+ * which should be enough for our use case.
  */
-#define LAUNCH_AUDIO                                                                                                   \
-	@"interaudiosrc channel=%@ ! voaacenc bitrate=96000 ! rtpmp4apay "                                                 \
+#define LAUNCH_AUDIO                                                                               \
+	@"interaudiosrc channel=%@ ! voaacenc bitrate=96000 ! rtpmp4apay "                             \
 	@"name=pay1 pt=97"
 
 // Combine the video and audio launch strings (separated by a space)
 #define LAUNCH_COMBINED LAUNCH_VIDEO @" " LAUNCH_AUDIO
+
+// Redeclare properties as readwrite
+@interface VMPRTSPServer ()
+@property (nonatomic, readwrite) VMPProfileModel *currentProfile;
+@end
 
 @implementation VMPRTSPServer {
 	GstRTSPServer *_server;
@@ -68,23 +80,30 @@
 
 	NSMutableArray<VMPPipelineManager *> *_managedPipelines;
 }
-+ (instancetype)serverWithConfiguration:(VMPServerConfiguration *)configuration {
-	return [[VMPRTSPServer alloc] initWithConfiguration:configuration];
++ (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration
+								profile:(VMPProfileModel *)profile {
+	return [[VMPRTSPServer alloc] initWithConfiguration:configuration profile:profile];
 }
 
-- (instancetype)initWithConfiguration:(VMPServerConfiguration *)configuration {
+- (instancetype)initWithConfiguration:(VMPConfigModel *)configuration
+							  profile:(VMPProfileModel *)profile {
 	VMP_ASSERT(configuration, @"Configuration cannot be nil");
+	VMP_ASSERT(profile, @"Profile cannot be nil");
+
 	self = [super init];
 	if (self) {
 		_configuration = configuration;
 		_server = gst_rtsp_server_new();
 		_mountPoints = gst_rtsp_server_get_mount_points(_server);
+		_currentProfile = profile;
 
-		NSUInteger channelCount = [[_configuration channelConfiguration] count];
+		NSUInteger channelCount = [[_configuration channels] count];
 		_managedPipelines = [NSMutableArray arrayWithCapacity:channelCount];
 
-		g_object_set(_server, "service", (const gchar *) [[_configuration rtspPort] UTF8String], NULL);
-		g_object_set(_server, "address", (const gchar *) [[_configuration rtspAddress] UTF8String], NULL);
+		g_object_set(_server, "service", (const gchar *) [[_configuration rtspPort] UTF8String],
+					 NULL);
+		g_object_set(_server, "address", (const gchar *) [[_configuration rtspAddress] UTF8String],
+					 NULL);
 	}
 	return self;
 }
@@ -98,138 +117,92 @@
 
 #pragma mark - Private methods
 
-// Iterate over the channelConfiguration array, create all pipeline managers acordingly, and start them.
+// Iterate over the channelConfiguration array, create all pipeline managers acordingly, and start
+// them.
 - (BOOL)_startChannelPipelinesWithError:(NSError **)error {
-	VMPDebug(@"Starting channel pipelines");
+	NSArray *channels;
+	VMPInfo(@"Starting channel pipelines");
 
-	NSArray *channelConfiguration = [_configuration channelConfiguration];
+	channels = [_configuration channels];
 
-	// TODO: Too much duplication here
-	for (NSDictionary *conf in channelConfiguration) {
-		NSString *channelType = conf[kVMPServerChannelTypeKey];
-		NSString *channelName = conf[kVMPServerChannelNameKey];
+	for (VMPConfigChannelModel *channel in channels) {
+		NSString *type, *name;
+		NSDictionary<NSString *, id> *properties;
 
-		if (!channelType || !channelName) {
-			CONFIG_ERROR(error, @"Channel configuration is missing required keys name or type")
-			return NO;
-		}
+		type = [channel type];
+		name = [channel name];
+		properties = [channel properties];
+		VMPInfo(@"Starting channel %@ of type %@", name, type);
 
-		VMPInfo(@"Starting channel %@ of type %@", channelName, channelType);
+		if ([type isEqualToString:VMPConfigChannelTypeV4L2]) {
+			NSString *device, *pipeline;
+			NSDictionary *vars;
+			VMPPipelineManager *manager;
 
-		NSDictionary *channelProperties = conf[kVMPServerChannelPropertiesKey];
-		if (!channelProperties) {
-			CONFIG_ERROR(error, @"Channel configuration is missing properties")
-			return NO;
-		}
-
-		VMPDebug(@"Channel properties: %@", channelProperties);
-
-		if ([channelType isEqualToString:kVMPServerChannelTypeV4L2]) {
-			NSString *device = channelProperties[@"device"];
+			device = properties[@"device"];
 			if (!device) {
-				CONFIG_ERROR(error, @"V4L2 channel is missing device property")
+				CONFIG_ERROR(error, @"V4L2 channel is missing 'device' property")
 				return NO;
 			}
 
-			VMPInfo(@"Creating V4L2 pipeline manager for device %@", device);
+			vars = @{@"V4L2DEV" : device, @"VIDEOCHANNEL.0" : name};
 
-			VMPV4L2PipelineManager *manager = [VMPV4L2PipelineManager managerWithDevice:device
-																				channel:channelName
-																			   Delegate:self];
+			pipeline = [_currentProfile pipelineForChannelType:type variables:vars error:error];
+			if (!pipeline) {
+				return NO;
+			}
+
+			manager = [VMPPipelineManager managerWithLaunchArgs:pipeline
+														channel:name
+													   delegate:self];
 			if (![manager start]) {
-				// TODO: Get information out of manager
 				CONFIG_ERROR(error, @"Failed to start V4L2 pipeline")
 				return NO;
 			}
 
-			VMPInfo(@"V4L2 pipeline for channel %@ started successfully", channelName);
-
 			[_managedPipelines addObject:manager];
-		} else if ([channelType isEqualToString:kVMPServerChannelTypeALSA]) {
-			NSString *device = channelProperties[@"device"];
-			if (!device) {
-				CONFIG_ERROR(error, @"ALSA channel is missing device property") return NO;
-			}
 
-			VMPInfo(@"Creating ALSA pipeline manager for device %@", device);
+			VMPInfo(@"V4L2 pipeline for channel %@ started successfully", name);
+		} else if ([type isEqualToString:VMPConfigChannelTypeVideoTest]) {
+			NSNumber *width, *height;
+			NSString *pipeline;
+			NSDictionary *vars;
+			VMPPipelineManager *manager;
 
-			if (![manager start]) {
-				// TODO: Get information out of manager
-				CONFIG_ERROR(error, @"Failed to start ALSA pipeline")
-				return NO;
-			}
-
-			VMPInfo(@"ALSA pipeline for channel %@ started successfully", channelName);
-
-			[_managedPipelines addObject:manager];
-		} else if ([channelType isEqualToString:kVMPServerChannelTypeVideoTest]) {
-			NSString *launchArgs;
-			NSNumber *width = channelProperties[@"width"];
-			NSNumber *height = channelProperties[@"height"];
-
+			width = properties[@"width"];
+			height = properties[@"height"];
 			if (!width || !height) {
 				CONFIG_ERROR(error, @"Video test channel is missing width or height property")
 				return NO;
 			}
 
-			VMPInfo(@"Creating video test pipeline manager with width %@ and height %@", width, height);
-			launchArgs = [NSString stringWithFormat:@"videotestsrc is-live=1 ! video/x-raw,width=%lu,height=%lu ! "
-													@"queue ! intervideosink channel=%@",
-													[width unsignedLongValue], [height unsignedLongValue], channelName];
+			// Substitution dictionary for pipeline template
+			vars = @{
+				@"VIDEOCHANNEL.0" : name,
+				@"WIDTH" : [width stringValue],
+				@"HEIGHT" : [height stringValue]
+			};
+			VMPDebug(@"Substitution dictionary for video test pipeline: %@", vars);
 
-			VMPDebug(@"Creating pipeline manager with launch arguments: %@", launchArgs);
+			// Substitute variables in pipeline template
+			pipeline = [_currentProfile pipelineForChannelType:type variables:vars error:error];
+			if (!pipeline) {
+				return NO;
+			}
 
-			VMPPipelineManager *manager = [VMPPipelineManager managerWithLaunchArgs:launchArgs
-																			Channel:channelName
-																		   Delegate:self];
+			VMPInfo(@"Creating video test pipeline manager with width %@ and height %@", width,
+					height);
+
+			manager = [VMPPipelineManager managerWithLaunchArgs:pipeline
+														channel:name
+													   delegate:self];
 			if (![manager start]) {
-				// TODO: Get information out of manager
 				CONFIG_ERROR(error, @"Failed to start video test pipeline")
 				return NO;
 			}
-
-			VMPInfo(@"Video test pipeline for channel %@ started successfully", channelName);
-
 			[_managedPipelines addObject:manager];
-		} else if ([channelType isEqualToString:kVMPServerChannelTypeAudioTest]) {
-			NSString *launchArgs;
 
-			VMPInfo(@"Creating audio test pipeline manager");
-
-			launchArgs = [NSString stringWithFormat:@"audiotestsrc is-live=1 ! capsfilter "
-													@"caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! "
-													@"queue ! interaudiosink channel=%@",
-													channelName];
-			VMPDebug(@"Creating pipeline manager with launch arguments: %@", launchArgs);
-			VMPPipelineManager *manager = [VMPPipelineManager managerWithLaunchArgs:launchArgs
-																			Channel:channelName
-																		   Delegate:self];
-
-			if (![manager start]) {
-				// TODO: Get information out of manager
-				CONFIG_ERROR(error, @"Failed to start audio test pipeline")
-				return NO;
-			}
-
-			VMPInfo(@"Audio test pipeline for channel %@ started successfully", channelName);
-
-			[_managedPipelines addObject:manager];
-		} else if ([channelType isEqualToString:kVMPServerChannelTypeCustom]) {
-			NSString *launchArgs = channelProperties[@"gstLaunchDescription"];
-			if (!launchArgs) {
-				CONFIG_ERROR(error, @"Custom channel is missing gstLaunchDescription property")
-				return NO;
-			}
-
-			VMPInfo(@"Creating custom pipeline manager with launch arguments: %@", launchArgs);
-
-			VMPPipelineManager *manager = [VMPPipelineManager managerWithLaunchArgs:launchArgs
-																			Channel:channelName
-																		   Delegate:self];
-			if (![manager start]) {
-				CONFIG_ERROR(error, @"Failed to start custom pipeline")
-				return NO;
-			}
+			VMPInfo(@"Video test pipeline for channel %@ started successfully", name);
 		} else {
 			CONFIG_ERROR(error, @"Unknown channel type")
 			return NO;
@@ -240,65 +213,97 @@
 	return YES;
 }
 
+/*
+	We use intervideo{src,sink} for separating source, and pipelines managed by the GStreamer RTSP
+   server. Separating audio pipelines is much more difficult, and as of writing this, there is a
+   major bug in the interaudio{src,sink}, which makes multiple listening clients impossible
+   (see: https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/issues/1788)
+
+   Instead, we use the concept of channels for configuration, but use sub-pipelines for audio
+   processing for each mountpoint.
+
+   This method converts the channel description to a sub-pipeline.
+*/
+
 - (BOOL)_createMountpointsWithError:(NSError **)error {
 	VMPDebug(@"Creating mountpoints");
-	NSArray *mountpoints = [_configuration rtspMountpoints];
-	for (NSDictionary *mountpoint in mountpoints) {
-		NSString *path = mountpoint[kVMPServerMountPointsPathKey];
-		NSString *type = mountpoint[kVMPServerMountPointsTypeKey];
-		NSString *videoChannel = mountpoint[kVMPServerMountpointVideoChannelKey];
-		NSString *audioChannel = mountpoint[kVMPServerMountpointAudioChannelKey];
+	NSArray *mountpoints = [_configuration mountpoints];
 
-		if (!path || !type) {
-			CONFIG_ERROR(error, @"Mountpoint configuration is missing required keys")
-			return NO;
-		}
+	for (VMPConfigMountpointModel *mountpoint in mountpoints) {
+		NSString *type, *path;
+		NSDictionary<NSString *, id> *properties;
 
-		if (!videoChannel && !audioChannel) {
-			CONFIG_ERROR(error, @"Mountpoint configuration requires a video or audio channel")
-			return NO;
-		}
+		type = [mountpoint type];
+		path = [mountpoint path];
+		properties = [mountpoint properties];
 
-		if ([type isEqualToString:kVMPServerMountpointTypeCombined]) {
-			NSString *secondaryVideoChannel = mountpoint[kVMPServerMountpointSecondaryVideoChannelKey];
-			if (!secondaryVideoChannel) {
-				CONFIG_ERROR(error, @"Combined mountpoint requires a secondary video channel")
+		/* Set up a combined mountpoint with two video channels, and one audio channel.
+		 * The secondary video channel can be used for a camera.
+		 */
+		if ([type isEqualToString:VMPConfigMountpointTypeCombined]) {
+			GstRTSPMediaFactory *factory;
+			NSString *presentationChannel, *cameraChannel, *audioChannel;
+			NSString *pipeline;
+			NSDictionary<NSString *, NSString *> *vars;
+
+			presentationChannel = properties[@"presentationChannel"];
+			cameraChannel = properties[@"cameraChannel"];
+			audioChannel = properties[@"audioChannel"];
+			if (!presentationChannel || !cameraChannel || !audioChannel) {
+				CONFIG_ERROR(error, @"Combined mountpoint is missing a channel "
+									@"('presentationChannel', 'cameraChannel', or 'audioChannel')")
 				return NO;
 			}
 
-			GstRTSPMediaFactory *factory;
-			NSString *launchCommand;
+			vars = @{
+				@"VIDEOCHANNEL.0" : presentationChannel,
+				@"VIDEOCHANNEL.1" : cameraChannel,
+			};
 
-			factory = gst_rtsp_media_factory_new();
-			// Only create one pipeline and share it with other clients
-			gst_rtsp_media_factory_set_shared(factory, TRUE);
-
-			launchCommand = [NSString stringWithFormat:LAUNCH_COMB, videoChannel, secondaryVideoChannel];
-
-			VMPDebug(@"Creating combined mountpoint with launch command: %@", launchCommand);
-
-			gst_rtsp_media_factory_set_launch(factory, (const gchar *) [launchCommand UTF8String]);
-			gst_rtsp_mount_points_add_factory(_mountPoints, (const gchar *) [path UTF8String], factory);
-		} else if ([type isEqualToString:kVMPServerMountpointTypeSingle]) {
-			GstRTSPMediaFactory *factory;
-			NSString *launchCommand;
-
-			factory = gst_rtsp_media_factory_new();
-			// Only create one pipeline and share it with other clients
-			gst_rtsp_media_factory_set_shared(factory, TRUE);
-
-			if (!videoChannel) { // Audio-only channel
-				launchCommand = [NSString stringWithFormat:LAUNCH_AUDIO, audioChannel];
-
-			} else if (!audioChannel) { // Video-only channel
-				launchCommand = [NSString stringWithFormat:LAUNCH_VIDEO, videoChannel];
-			} else { // audio and video channel
-				launchCommand = [NSString stringWithFormat:LAUNCH_COMBINED, videoChannel, audioChannel];
+			pipeline = [_currentProfile pipelineForMountpointType:type variables:vars error:error];
+			if (!pipeline) {
+				return NO;
 			}
 
-			gst_rtsp_media_factory_set_launch(factory, (const gchar *) [launchCommand UTF8String]);
+			// Setup a new GStreamer RTSP media factory
+			factory = gst_rtsp_media_factory_new();
+			// Only create one pipeline and share it with other clients
+			gst_rtsp_media_factory_set_shared(factory, TRUE);
 
-			gst_rtsp_mount_points_add_factory(_mountPoints, (const gchar *) [path UTF8String], factory);
+			gst_rtsp_media_factory_set_launch(factory, (const gchar *) [pipeline UTF8String]);
+			gst_rtsp_mount_points_add_factory(_mountPoints, (const gchar *) [path UTF8String],
+											  factory);
+		} else if ([type isEqualToString:VMPConfigMountpointTypeSingle]) {
+			GstRTSPMediaFactory *factory;
+			NSString *videoChannel, *audioChannel;
+			NSString *pipeline;
+			NSDictionary<NSString *, NSString *> *vars;
+
+			videoChannel = properties[@"videoChannel"];
+			audioChannel = properties[@"audioChannel"];
+			if (!videoChannel || !audioChannel) {
+				CONFIG_ERROR(error, @"Combined mountpoint is missing a channel "
+									@"('videoChannel',  or 'audioChannel')")
+				return NO;
+			}
+
+			factory = gst_rtsp_media_factory_new();
+			// Only create one pipeline and share it with other clients
+			gst_rtsp_media_factory_set_shared(factory, TRUE);
+
+			vars = @{
+				@"VIDEOCHANNEL.0" : videoChannel,
+			};
+
+			pipeline = [_currentProfile pipelineForMountpointType:type variables:vars error:error];
+			if (!pipeline) {
+				return NO;
+			}
+
+			gst_rtsp_media_factory_set_launch(factory, (const gchar *) [pipeline UTF8String]);
+
+			gst_rtsp_mount_points_add_factory(_mountPoints, (const gchar *) [path UTF8String],
+											  factory);
 		}
 	}
 

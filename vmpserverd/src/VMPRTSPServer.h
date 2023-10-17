@@ -4,7 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+#import "VMPConfigModel.h"
 #import "VMPPipelineManager.h"
+#import "VMPProfileManager.h"
+#import "VMPProfileModel.h"
 #import "VMPServerMain.h"
 
 #import <gst/rtsp-server/rtsp-server.h>
@@ -25,10 +28,19 @@
 
 	@note This property is readonly, and can only be set during initialisation.
 */
-@property (nonatomic, readonly) VMPServerConfiguration *configuration;
+@property (nonatomic, readonly) VMPConfigModel *configuration;
 
-+ (instancetype)serverWithConfiguration:(VMPServerConfiguration *)configuration;
-- (instancetype)initWithConfiguration:(VMPServerConfiguration *)configuration;
+/**
+	@brief The current pipeline profile
+
+	@note This property is readonly, and is automatically set during initialisation.
+*/
+@property (nonatomic, readonly) VMPProfileModel *currentProfile;
+
++ (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration
+								profile:(VMPProfileModel *)profile;
+- (instancetype)initWithConfiguration:(VMPConfigModel *)configuration
+							  profile:(VMPProfileModel *)profile;
 
 /**
 	@brief Start the RTSP server
