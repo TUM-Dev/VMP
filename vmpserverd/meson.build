@@ -63,7 +63,7 @@ source = [
     'src/main.m',
     'src/VMPServerMain.m',
     'src/VMPRTSPServer.m',
-    'src/VMPProfile.m',
+    'src/VMPProfileManager.m',
     'src/VMPUdevClient.m',
     'src/VMPPipelineManager.m',
     'src/VMPErrors.m',
