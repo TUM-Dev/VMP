@@ -1,4 +1,4 @@
-project('vmp-server', ['objc', 'c'], version : '0.1.0')
+project('vmpserverd', ['objc', 'c'], version : '0.1.0')
 
 fs = import('fs')
 
