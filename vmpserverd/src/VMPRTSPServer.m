@@ -28,47 +28,6 @@
 								 userInfo:userInfo];                                               \
 	}
 
-#ifdef NV_JETSON
-// TODO: Make explicit width and height argument configurable. As we only need to set this
-// explicitly for the Jetson, we need to preformat the launch string.
-#define LAUNCH_VIDEO                                                                               \
-	@"intervideosrc channel=%@ ! queue ! nvvidconv ! video/x-raw(memory:NVMM), width=(int)1920, "  \
-	@"height=(int)1080 ! "                                                                         \
-	@"nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96"
-#else
-// x264enc uses kbit/s not bit/s
-#define LAUNCH_VIDEO                                                                               \
-	@"intervideosrc channel=%@ ! video/x-raw, width=(int)1920, height=(int)1080 ! queue ! "        \
-	@"videoconvert ! x264enc "                                                                     \
-	@"bitrate=2500 ! "                                                                             \
-	@"rtph264pay name=pay0 pt=96"
-#endif
-
-#define LAUNCH_COMB                                                                                \
-	@"nvcompositor name=comp "                                                                     \
-	@"sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810 "                        \
-	@"sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 ! "                    \
-	@"video/x-raw(memory:NVMM),width=1920,height=1080 ! nvvidconv ! "                              \
-	@"nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96 "                \
-	@"intervideosrc channel=%@ ! nvvidconv ! comp.sink_0 "                                         \
-	@"intervideosrc channel=%@ ! nvvidconv ! comp.sink_1 "
-
-/* We added an audioresample element audioresample element to ensure that any input audio is
- * resampled to match the output rate properly, which is essential for maintaining AV sync and good
- * quality over the RTSP stream.
- *
- * NOTE: This needs to be tested, and removed it produces to much overhead.
- *
- * We encode the audio stream into AAC-LC (default profile of avenc_aac) with a bitrate of 128kbps,
- * which should be enough for our use case.
- */
-#define LAUNCH_AUDIO                                                                               \
-	@"interaudiosrc channel=%@ ! voaacenc bitrate=96000 ! rtpmp4apay "                             \
-	@"name=pay1 pt=97"
-
-// Combine the video and audio launch strings (separated by a space)
-#define LAUNCH_COMBINED LAUNCH_VIDEO @" " LAUNCH_AUDIO
-
 // Redeclare properties as readwrite
 @interface VMPRTSPServer ()
 @property (nonatomic, readwrite) VMPProfileModel *currentProfile;
