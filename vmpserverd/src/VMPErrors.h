@@ -15,6 +15,7 @@ extern NSString *const VMPErrorDomain;
 								   code:errorCode                                                  \
 							   userInfo:@{NSLocalizedDescriptionKey : message}];                   \
 	}
+
 /**
 @brief Error codes for the VMPErrorDomain
 */
