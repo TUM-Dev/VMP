@@ -13,6 +13,7 @@
 									  error:(NSError **)error {
 	NSMutableString *mutableSelf;
 	NSArray<NSTextCheckingResult *> *matches;
+	NSInteger nextOffset = 0;
 
 	// We only need to compile the regex once
 	static NSRegularExpression *regex;
@@ -34,10 +35,14 @@
 	// Iterate over all matches, and replace them with the value from the variables dictionary if
 	// present
 	for (NSTextCheckingResult *res in matches) {
-		NSRange matchRange;
+		NSRange matchRange, fullMatchRange;
 		NSString *key, *value;
 
 		matchRange = [res rangeAtIndex:1];
+		fullMatchRange = [res range];
+		// Shift range by the offset of the previous match
+		matchRange = NSMakeRange(matchRange.location + nextOffset, matchRange.length);
+		fullMatchRange = NSMakeRange(fullMatchRange.location + nextOffset, fullMatchRange.length);
 
 		key = [mutableSelf substringWithRange:matchRange];
 		value = variables[key];
@@ -58,7 +63,10 @@
 			return nil;
 		}
 
-		[mutableSelf replaceCharactersInRange:[res range] withString:value];
+		[mutableSelf replaceCharactersInRange:fullMatchRange withString:value];
+
+		// Update the offset for the next match
+		nextOffset = nextOffset + [value length] - fullMatchRange.length;
 	}
 
 	return [mutableSelf copy];
