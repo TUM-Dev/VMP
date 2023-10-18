@@ -16,12 +16,39 @@
 
 	self = [super init];
 	if (self) {
+		NSMutableArray *mountpoints, *channels;
+		NSArray *plistMountpoints, *plistChannels;
+
 		SET_PROPERTY(_name, @"name");
 		SET_PROPERTY(_profileDirectory, @"profileDirectory");
 		SET_PROPERTY(_rtspAddress, @"rtspAddress");
 		SET_PROPERTY(_rtspPort, @"rtspPort");
-		SET_PROPERTY(_mountpoints, @"mountpoints");
-		SET_PROPERTY(_channels, @"channels");
+
+		SET_PROPERTY(plistMountpoints, @"mountpoints");
+		SET_PROPERTY(plistChannels, @"channels");
+
+		mountpoints = [NSMutableArray arrayWithCapacity:[plistMountpoints count]];
+		channels = [NSMutableArray arrayWithCapacity:[plistChannels count]];
+
+		for (NSDictionary *mountpoint in plistMountpoints) {
+			VMPConfigMountpointModel *model =
+				[[VMPConfigMountpointModel alloc] initWithPropertyList:mountpoint error:error];
+			if (!model) {
+				return nil;
+			}
+			[mountpoints addObject:model];
+		}
+		for (NSDictionary *channel in plistChannels) {
+			VMPConfigChannelModel *model =
+				[[VMPConfigChannelModel alloc] initWithPropertyList:channel error:error];
+			if (!model) {
+				return nil;
+			}
+			[channels addObject:model];
+		}
+
+		_mountpoints = [mountpoints copy];
+		_channels = [channels copy];
 	}
 
 	return self;

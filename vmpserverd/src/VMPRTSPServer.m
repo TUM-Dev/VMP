@@ -83,6 +83,7 @@
 	VMPInfo(@"Starting channel pipelines");
 
 	channels = [_configuration channels];
+	VMPDebug(@"Found %lu channels in configuration", [channels count]);
 
 	for (VMPConfigChannelModel *channel in channels) {
 		NSString *type, *name;
@@ -201,28 +202,30 @@
 		 */
 		if ([type isEqualToString:VMPConfigMountpointTypeCombined]) {
 			GstRTSPMediaFactory *factory;
-			NSString *presentationChannel, *cameraChannel, *audioChannel;
+			NSString *videoChannel, *secondaryVideoChannel, *audioChannel;
 			NSString *pipeline;
 			NSDictionary<NSString *, NSString *> *vars;
 
-			presentationChannel = properties[@"presentationChannel"];
-			cameraChannel = properties[@"cameraChannel"];
+			videoChannel = properties[@"videoChannel"];
+			secondaryVideoChannel = properties[@"secondaryVideoChannel"];
 			audioChannel = properties[@"audioChannel"];
-			if (!presentationChannel || !cameraChannel || !audioChannel) {
+			if (!videoChannel || !secondaryVideoChannel || !audioChannel) {
 				CONFIG_ERROR(error, @"Combined mountpoint is missing a channel "
-									@"('presentationChannel', 'cameraChannel', or 'audioChannel')")
+									@"('videoChannel', 'secondaryVideoChannel', or 'audioChannel')")
 				return NO;
 			}
 
 			vars = @{
-				@"VIDEOCHANNEL.0" : presentationChannel,
-				@"VIDEOCHANNEL.1" : cameraChannel,
+				@"VIDEOCHANNEL.0" : videoChannel,
+				@"VIDEOCHANNEL.1" : secondaryVideoChannel,
 			};
 
 			pipeline = [_currentProfile pipelineForMountpointType:type variables:vars error:error];
 			if (!pipeline) {
 				return NO;
 			}
+
+			VMPDebug(@"Combined mountpoint pipeline: %@", pipeline);
 
 			// Setup a new GStreamer RTSP media factory
 			factory = gst_rtsp_media_factory_new();

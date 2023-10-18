@@ -81,34 +81,39 @@ static NSString *const deviceTreeModelPath = @"/proc/device-tree/model";
 	mgr = [NSFileManager defaultManager];
 	contents = [mgr contentsOfDirectoryAtPath:path error:error];
 	if (!contents) {
+		VMPError(@"Failed to read contents of directory at path '%@'", path);
 		return NO;
 	}
 	found = [NSMutableArray arrayWithCapacity:[contents count]];
 
+	VMPDebug(@"Found %lu files %@ in profile directory '%@'", [contents count], contents, path);
+
 	VMPProfileModel *profile;
 	for (NSString *cur in contents) {
-		if ([mgr isReadableFileAtPath:cur]) {
-			NSDictionary *propertyList;
+		NSDictionary *propertyList;
+		NSString *curPath;
 
-			propertyList = [NSDictionary dictionaryWithContentsOfFile:cur];
-			if (!propertyList) {
-				VMP_FAST_ERROR(error, VMPErrorCodePropertyListError,
-							   @"Failed to read plist at path '%@'", cur);
-				return NO;
-			}
+		curPath = [path stringByAppendingPathComponent:cur];
 
-			// Create profile object from property list representation
-			profile = [[VMPProfileModel alloc] initWithPropertyList:propertyList error:error];
-			if (!profile) {
-				return NO;
-			}
-
-			VMPDebug(@"Found profile: %@", [profile name]);
-			[found addObject:profile];
+		propertyList = [NSDictionary dictionaryWithContentsOfFile:curPath];
+		if (!propertyList) {
+			VMP_FAST_ERROR(error, VMPErrorCodePropertyListError,
+						   @"Failed to read plist at path '%@'", curPath);
+			return NO;
 		}
+
+		// Create profile object from property list representation
+		profile = [[VMPProfileModel alloc] initWithPropertyList:propertyList error:error];
+		if (!profile) {
+			VMPError(@"Failed to create profile from plist '%@'", cur);
+			return NO;
+		}
+
+		VMPInfo(@"Found profile: %@", [profile name]);
+		[found addObject:profile];
 	}
 
-	VMPDebug(@"Loaded %lu profiles", [found count]);
+	VMPInfo(@"Loaded %lu profiles", [found count]);
 	_availableProfiles = [NSArray arrayWithArray:found];
 
 	return YES;
@@ -153,6 +158,9 @@ static NSString *const deviceTreeModelPath = @"/proc/device-tree/model";
 		return NO;
 	}
 
+	_currentProfile = curMax;
+
+	VMPInfo(@"Selected profile: %@", [_currentProfile name]);
 	return YES;
 }
 

@@ -1,89 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<key>title</key>
-	<string>Generic Profile</string>
-	<key>identifier</key>
-	<string>com.hugomelder.software</string>
-	<key>version</key>
-	<string>0.1.0</key>
-	<key>description</key>
-	<string>Generic pipeline profile for all platforms.</string>
-	<key>supportedPlatforms</key>
-	<array>
-		<string>all</string>
-	</array>
-
-	<!--
-		Mountpoints and the underlying GStreamer pipelines are managed
-		by the GStreamer RTSP server.
-
-		By default, a 1080p preset is used for both the single, and combined
-		mountpoints. As we only use "channels" in the context of video streams,
-		the additional key "audioProviders" specifies pipeline templates for
-		the audio channel.
-
-		Pipeline configurations for mountpoints should contain rtp payloaders
-		in the format pay%d, where %d is a non-negative integer.
-
-		We use variables enclosed in '{}' for values that are populated during pipelines
-		construction.
-
-		Currently, the following variables are available:
-		- {VIDEOCHANNEL.%u}: The video channel name. Enumerated using unsigned
-		integers, starting at 0 (e.g. {VIDEOCHANNEL.0})
-		- {PULSEDEV}: The pulse audio device name
-		(e.g. alsa_input.pci-0000_00_03.0.analog-stereo)
-
-		'pactl list sources short' lists all availables sources. The second column
-		in the table is the pulseaudio device name.
-		Replace 'sources' with 'sinks' to get a list of all available sinks.
-	-->
-	<key>mountpoints</key>
-	<dict>
-		<key>single</key>
-		<dict>
-			<key>default</key>
-			<!--
-				Note that x264enc uses kbit/s and not bit/s for the bitrate
-				property!
-			-->
-			<string>intervideosrc channel={VIDEOCHANNEL.0} ! video/x-raw, width=(int)1920,
- height=(int)1080 ! queue ! videoconvert ! x264enc bitrate=2500 !
- rtph264pay name=pay0 pt=96</string>
-			<key>audioProviders</key>
-			<dict>
-				<key>pulse</key>
-				<string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
-			</dict>
-		</dict>
-		<key>combined</key>
-		<dict>
-			<key>default</key>
-			<string>compositor name=comp
+    <dict>
+        <key>name</key>
+        <string>Generic Profile</string>
+        <key>identifier</key>
+        <string>com.hugomelder.software</string>
+        <key>version</key>
+        <string>0.1.0</string>
+        <key>description</key>
+        <string>Generic pipeline profile for all platforms.</string>
+        <key>supportedPlatforms</key>
+        <array>
+            <string>all</string>
+        </array>
+        
+        <!--
+        Mountpoints and the underlying GStreamer pipelines are managed
+        by the GStreamer RTSP server.
+        
+        By default, a 1080p preset is used for both the single, and combined
+        mountpoints. As we only use "channels" in the context of video streams,
+        the additional key "audioProviders" specifies pipeline templates for
+        the audio channel.
+        
+        Pipeline configurations for mountpoints should contain rtp payloaders
+        in the format pay%d, where %d is a non-negative integer.
+        
+        We use variables enclosed in '{}' for values that are populated during pipelines
+        construction.
+        
+        Currently, the following variables are available:
+        - {VIDEOCHANNEL.%u}: The video channel name. Enumerated using unsigned
+        integers, starting at 0 (e.g. {VIDEOCHANNEL.0})
+        - {PULSEDEV}: The pulse audio device name
+        (e.g. alsa_input.pci-0000_00_03.0.analog-stereo)
+        
+        'pactl list sources short' lists all availables sources. The second column
+        in the table is the pulseaudio device name.
+        Replace 'sources' with 'sinks' to get a list of all available sinks.
+        -->
+        <key>mountpoints</key>
+        <dict>
+            <key>single</key>
+            <string>intervideosrc channel={VIDEOCHANNEL.0} ! video/x-raw, width=(int)1920,
+                height=(int)1080 ! queue ! videoconvert ! x264enc bitrate=2500 !
+                rtph264pay name=pay0 pt=96</string>
+            <key>combined</key>
+            <string>compositor name=comp background=1
  sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810 sink_0::sizing-policy=1
  sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 sink_1::sizing-policy=1 !
  video/x-raw,width=1920,height=1080 ! x264enc bitrate=2500 ! rtph264pay name=pay0 pt=96
- intervideosrc channel={VIDEOCHANNEL.0} ! comp.sink_0 
- intervideosrc channel={VIDEOCHANNEL.1} ! comp.sink_1</string>
-			<key>audioProviders</key>
-			<dict>
-				<key>pulse</key>
-				<string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
-				<key>audioTest</key>
-				<string>audiotestsrc is-live=1 ! capsfilter caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2
- ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
-			</dict>
-		</dict>
-	</dict>
-
-	<key>channels</key>
-	<dict>
-		<key>v4l2</key>
-		<string>v4l2src device={V4L2DEV} ! videoconvert ! intervideosink channel={VIDEOCHANNEL.0}</string>
-		<key>videoTest</key>
-		<string>videotestsrc is-live=1 ! video/x-raw,width={WIDTH},height={HEIGHT} !
+ intervideosrc channel={VIDEOCHANNEL.0} ! videoconvert ! comp.sink_0
+ intervideosrc channel={VIDEOCHANNEL.1} ! videoconvert ! comp.sink_1</string>
+        </dict>
+        
+        <key>channels</key>
+        <dict>
+            <key>v4l2</key>
+            <string>v4l2src device={V4L2DEV} ! videoconvert ! intervideosink channel={VIDEOCHANNEL.0}</string>
+            <key>videoTest</key>
+            <string>videotestsrc is-live=1 ! video/x-raw,width={WIDTH},height={HEIGHT} !
  intervideosink channel={VIDEOCHANNEL.0}</string>
-	</dict>
-</dict>
+        </dict>
+        <key>audioProviders</key>
+        <dict>
+            <key>pulse</key>
+            <string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
+        </dict>
+    </dict>
+</plist>

@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>title</key>
+	<key>name</key>
 	<string>Nvidia Deepstream Profile</string>
 	<key>identifier</key>
 	<string>com.hugomelder.deepstream-6</string>
@@ -18,28 +18,14 @@
 	<key>mountpoints</key>
 	<dict>
 		<key>single</key>
-		<dict>
 			<!--
 				TODO: Keep aspect ratio of video when converting to 1080p 16:9
 				stream. nvvidconv does not have a property to enforce a sizing policy.
 			-->
-			<key>default</key>
 			<string>intervideosrc channel={VIDEOCHANNEL.0} ! nvvidconv !
  video/x-raw(memory:NVMM), width=(int)1920, height=(int)1080 !
  nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96</string>
-			<key>audioProviders</key>
-			<dict>
-				<!--
-					Nvidia Deepstream does not support hardware audio encoders/decoders.
-					We use a software encoder to encode the audio stream into AAC-LC.
-				-->
-				<key>pulse</key>
-				<string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
-			</dict>
-		</dict>
 		<key>combined</key>
-		<dict>
-			<key>default</key>
 			<!--
 				TODO: The nvcompositor does not have the sizing-policy pad property that exists
 				with the default GStreamer "compositor" element. We need to find a way to keep
@@ -52,12 +38,6 @@
  nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96 
  intervideosrc channel={VIDEOCHANNEL.0} ! nvvidconv ! comp.sink_0
  intervideosrc channel={VIDEOCHANNEL.1} ! nvvidconv ! comp.sink_1</string>
-			<key>audioProviders</key>
-			<dict>
-				<key>pulse</key>
-				<string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
-			</dict>
-		</dict>
 	</dict>
 
 	<key>channels</key>
@@ -68,4 +48,10 @@
 		<string>videotestsrc is-live=1 ! video/x-raw,width={WIDTH},height={HEIGHT} !
  intervideosink channel={VIDEOCHANNEL.0}</string>
 	</dict>
+	<key>audioProviders</key>
+	<dict>
+		<key>pulse</key>
+		<string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
+	</dict>
 </dict>
+</plist>
