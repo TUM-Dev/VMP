@@ -89,7 +89,6 @@ NSString *const kVMPStatePlaying = @"playing";
    Subsequent calls will return NO.
 */
 - (BOOL)_createPipelineWithError:(NSError **)error {
-	GstElement *pipeline;
 	GstBus *bus;
 	GstStateChangeReturn ret;
 	GError *gerror = NULL;
@@ -101,9 +100,9 @@ NSString *const kVMPStatePlaying = @"playing";
 	_pipelineCreated = YES;
 
 	// Transfer: Full
-	pipeline = gst_parse_launch([_launchArgs UTF8String], &gerror);
-	if (pipeline == NULL) {
-		VMPError(@"Failed to create pipeline");
+	_pipeline = gst_parse_launch([_launchArgs UTF8String], &gerror);
+	if (_pipeline == NULL) {
+		VMPError(@"gst_parse_launch returned NULL while parsing launch args: %@", _launchArgs);
 		if (gerror != NULL) {
 			VMPError(@"GStreamer error: %s", gerror->message);
 
@@ -119,14 +118,18 @@ NSString *const kVMPStatePlaying = @"playing";
 		return NO;
 	}
 
-	NSDebugLog(@"Created pipeline with launch args: %@", _launchArgs);
+	VMPDebug(@"Created pipeline with launch args: %@", _launchArgs);
 
 	// Set pipeline state to playing
-	ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
+	ret = gst_element_set_state(_pipeline, GST_STATE_PLAYING);
 	if (ret == GST_STATE_CHANGE_FAILURE) {
-		VMPError(@"Failed to start pipeline");
+		NSString *msg;
+
+		msg = [NSString stringWithFormat:@"Failed to change pipeline state to playing for channel "
+										  "'%@'",
+										 _channel];
 		if (error != NULL) {
-			NSDictionary *userInfo = @{NSLocalizedDescriptionKey : @"Failed to start pipeline"};
+			NSDictionary *userInfo = @{NSLocalizedDescriptionKey : msg};
 
 			*error = [NSError errorWithDomain:VMPErrorDomain
 										 code:VMPErrorCodeGStreamerStateChangeError
@@ -136,7 +139,7 @@ NSString *const kVMPStatePlaying = @"playing";
 	}
 
 	// Transfer: Full
-	bus = gst_element_get_bus(pipeline);
+	bus = gst_element_get_bus(_pipeline);
 	if (bus != NULL) {
 		// Bridge object pointer without touching reference count
 		// TODO: figure out bridging problem
@@ -144,7 +147,6 @@ NSString *const kVMPStatePlaying = @"playing";
 		gst_object_unref(bus);
 	}
 
-	[self setPipeline:pipeline];
 	return YES;
 }
 
