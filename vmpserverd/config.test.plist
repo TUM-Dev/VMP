@@ -118,6 +118,15 @@
                 <integer>720</integer>
             </dict>
         </dict>
+        <dict>
+            <key>name</key>
+            <string>audio0</string>
+            <key>type</key>
+            <string>audioTest</string>
+            <key>properties</key>
+            <dict>
+            </dict>
+        </dict>
     </array>
 </dict>
 </plist>
