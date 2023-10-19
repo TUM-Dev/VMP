@@ -35,7 +35,7 @@
  sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810
  sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 !
  video/x-raw(memory:NVMM),width=1920,height=1080 ! nvvidconv !
- nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! rtph264pay name=pay0 pt=96 
+ nvv4l2h264enc maxperf-enable=1 bitrate=2500000 ! queue ! rtph264pay name=pay0 pt=96 
  intervideosrc channel={VIDEOCHANNEL.0} ! nvvidconv ! comp.sink_0
  intervideosrc channel={VIDEOCHANNEL.1} ! nvvidconv ! comp.sink_1</string>
 	</dict>
@@ -51,7 +51,9 @@
 	<key>audioProviders</key>
 	<dict>
 		<key>pulse</key>
-		<string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! rtpmp4apay name=pay1 pt=97</string>
+		<string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! queue ! rtpmp4apay name=pay1 pt=97</string>
+            <key>audioTest</key>
+            <string>audiotestsrc ! voaacenc bitrate=96000 ! queue ! rtpmp4apay name=pay1 pt=97</string>
 	</dict>
 </dict>
 </plist>
