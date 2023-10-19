@@ -37,7 +37,10 @@ static NSString *const deviceTreeModelPath = @"/proc/device-tree/model";
 			return nil;
 		}
 
+		VMPDebug(@"Detected device tree model: %@", model);
+
 		if ([model containsString:@"NVIDIA Jetson"]) {
+			VMPDebug(@"Detected NVIDIA Jetson platform");
 			return [VMPProfileManager managerWithPath:path
 									  runtimePlatform:VMPProfilePlatformDeepstream6
 												error:error];
