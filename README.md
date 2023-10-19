@@ -1,5 +1,5 @@
-# TUMmp: TUM Media Processor
-TUMmp is an open-source project that aims to reimplement the functionality
+# VMP
+VMP is an open-source project that aims to reimplement the functionality
 of media streaming processors in software, using the GStreamer Multimedia
 Framework.
 
@@ -8,18 +8,22 @@ Multimedia encoding/decoding, and additional HDMI capture capabilities.
 
 The capture cards are accessed via the Video for Linux (v4l2) subsystem.
 
-What Does a Media Processor Do?
+## What Does a Media Processor Do?
 A media processor is a purpose-built device that combines multiple input streams,
-composits new streams, and exposes them via a network feed. Often additional
-features such as remote management, automatic backups, and scheduling are also part of an SMP.
+composits new streams, and exposes them via a network feed.
 
-TUMmp Project Goals
+## Project Goals
 Our aim is to bring the above features into a stable, and
 software-defined solution that works with industry-standard hardware, reducing
 costs significantly.
 
-Current Status
-As of now, TUMmp is in the concept phase.
+## Subprojects
 
-Technology Stack
-TUMmp is being built using the GStreamer Multimedia Framework.
+As a complex project, VMP is split into multiple subprojects. The core of the software
+stack is the `vmpserverd` daemon, which is responsible for managing the media processing,
+
+See the [vmpserverd](vmpserverd/README.md) README for more information.
+
+## License
+
+The VMP project is licensed under the MIT license. See the [LICENSE](LICENSE) file for more information.
