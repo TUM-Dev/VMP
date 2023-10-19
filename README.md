@@ -1,5 +1,5 @@
 # VMP
-VMP is an open-source project that aims to reimplement the functionality
+VMP (Virtual Media Processor) is an open-source project that aims to reimplement the functionality
 of media streaming processors in software, using the GStreamer Multimedia
 Framework.
 
