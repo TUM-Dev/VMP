@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <Foundation/NSDictionary.h>
 #import <glib.h>
 #import <gst/rtsp-server/rtsp-server.h>
 
@@ -13,6 +14,7 @@
 #import "VMPConfigModel.h"
 #import "VMPConfigMountpointModel.h"
 
+#import "VMPErrors.h"
 #import "VMPJournal.h"
 #import "VMPRTSPServer.h"
 
@@ -163,9 +165,6 @@
 			[_managedPipelines addObject:manager];
 
 			VMPInfo(@"Video test pipeline for channel %@ started successfully", name);
-		} else {
-			CONFIG_ERROR(error, @"Unknown channel type")
-			return NO;
 		}
 	}
 
@@ -203,7 +202,7 @@
 		if ([type isEqualToString:VMPConfigMountpointTypeCombined]) {
 			GstRTSPMediaFactory *factory;
 			NSString *videoChannel, *secondaryVideoChannel, *audioChannel;
-			NSString *pipeline;
+			NSString *pipeline, *audioPipeline;
 			NSDictionary<NSString *, NSString *> *vars;
 
 			videoChannel = properties[@"videoChannel"];
@@ -225,6 +224,15 @@
 				return NO;
 			}
 
+			audioPipeline = [self _pipelineFromAudioChannel:audioChannel error:error];
+			if (!audioPipeline) {
+				return NO;
+			}
+
+			VMPDebug(@"Video-only mountpoint pipeline: %@", pipeline);
+
+			pipeline = [NSString stringWithFormat:@"%@ %@", pipeline, audioPipeline];
+
 			VMPDebug(@"Combined mountpoint pipeline: %@", pipeline);
 
 			// Setup a new GStreamer RTSP media factory
@@ -238,7 +246,7 @@
 		} else if ([type isEqualToString:VMPConfigMountpointTypeSingle]) {
 			GstRTSPMediaFactory *factory;
 			NSString *videoChannel, *audioChannel;
-			NSString *pipeline;
+			NSString *pipeline, *audioPipeline;
 			NSDictionary<NSString *, NSString *> *vars;
 
 			videoChannel = properties[@"videoChannel"];
@@ -262,6 +270,17 @@
 				return NO;
 			}
 
+			audioPipeline = [self _pipelineFromAudioChannel:audioChannel error:error];
+			if (!audioPipeline) {
+				return NO;
+			}
+
+			VMPDebug(@"Video-only single mountpoint pipeline: %@", pipeline);
+
+			pipeline = [NSString stringWithFormat:@"%@ %@", pipeline, audioPipeline];
+
+			VMPDebug(@"Combined single mountpoint pipeline: %@", pipeline);
+
 			gst_rtsp_media_factory_set_launch(factory, (const gchar *) [pipeline UTF8String]);
 
 			gst_rtsp_mount_points_add_factory(_mountPoints, (const gchar *) [path UTF8String],
@@ -271,6 +290,54 @@
 
 	VMPDebug(@"Finished creating mountpoints");
 	return YES;
+}
+
+- (NSString *)_pipelineFromAudioChannel:(NSString *)channel error:(NSError **)error {
+	NSArray *channels;
+
+	channels = [_configuration channels];
+
+	for (VMPConfigChannelModel *chan in channels) {
+		NSString *name;
+
+		name = [chan name];
+		if ([name isEqualToString:channel]) {
+			NSDictionary<NSString *, id> *properties;
+			NSString *type;
+
+			properties = [chan properties];
+			type = [chan type];
+
+			if ([type isEqualToString:VMPConfigChannelTypePulseAudio]) {
+				NSString *device;
+				NSDictionary<NSString *, NSString *> *vars;
+
+				device = properties[@"device"];
+				if (!device) {
+					VMP_FAST_ERROR(error, VMPErrorCodeConfigurationError,
+								   @"'device' property not found for channel '%@", channel);
+					return nil;
+				}
+
+				vars = @{@"PULSEDEV" : device};
+
+				return [_currentProfile pipelineForChannelType:type variables:vars error:error];
+			} else if ([type isEqualToString:@"audioTest"]) {
+				NSString *type;
+				NSDictionary<NSString *, id> *vars;
+
+				type = [chan type];
+				vars = @{};
+
+				return [_currentProfile pipelineForChannelType:type variables:vars error:error];
+			} else {
+				CONFIG_ERROR(error, @"Unknown audio channel type")
+				return nil;
+			}
+		}
+	}
+
+	return nil;
 }
 
 - (BOOL)startWithError:(NSError **)error {
