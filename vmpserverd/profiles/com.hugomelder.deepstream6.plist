@@ -12,7 +12,7 @@
 	<string>AV pipeline configuration optimised for Nvidia platforms supporting the Deepstream framework.</string>
 	<key>supportedPlatforms</key>
 	<array>
-		<string>deepstream-6</string>
+		<string>deepstream6</string>
 	</array>
 
 	<key>mountpoints</key>
