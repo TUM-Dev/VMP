@@ -72,8 +72,8 @@
 // FIXME: This is bad. We should not have multiple pipelines with the same delegate
 #pragma mark - VMPPipelineManagerDelegate
 
-- (void)onStateChanged:(NSString *)state {
-	VMPInfo(@"Pipeline state changed: %@", state);
+- (void)onStateChanged:(NSString *)state manager:(VMPPipelineManager *)mgr {
+	VMPInfo(@"Pipeline state for manager %@ changed: %@", mgr, state);
 }
 
 #pragma mark - Private methods

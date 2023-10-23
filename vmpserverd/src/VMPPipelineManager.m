@@ -21,6 +21,15 @@ NSString *const kVMPStatePlaying = @"playing";
 		VMPError(@"Error: %@", error);                                                             \
 	}
 
+static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
+	// Cast back to an Objective-C object
+	__unsafe_unretained VMPPipelineManager *localManager = (__bridge id) mgr;
+
+	VMPInfo(@"Received bus message: %s", GST_MESSAGE_TYPE_NAME(message));
+	VMPInfo(@"Manager from bus: %@", localManager);
+	return TRUE;
+}
+
 // Redefine properties for readwrite access
 @interface VMPPipelineManager ()
 
@@ -72,7 +81,7 @@ NSString *const kVMPStatePlaying = @"playing";
 		PRINT_ERROR(error);
 		if (error != nil && [error code] == VMPErrorCodeGStreamerParseError) {
 			[self setState:kVMPStateDeviceError];
-			[[self delegate] onStateChanged:kVMPStateDeviceError];
+			[[self delegate] onStateChanged:kVMPStateDeviceError manager:self];
 		}
 		return NO;
 	}
@@ -143,7 +152,7 @@ NSString *const kVMPStatePlaying = @"playing";
 	if (bus != NULL) {
 		// Bridge object pointer without touching reference count
 		// TODO: figure out bridging problem
-		// gst_bus_add_watch(bus, (GstBusFunc) gstreamer_bus_cb, (__bridge gpointer) self);
+		gst_bus_add_watch(bus, (GstBusFunc) gstreamer_bus_cb, (__bridge void *) self);
 		gst_object_unref(bus);
 	}
 

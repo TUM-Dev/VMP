@@ -15,6 +15,8 @@ extern NSString *const kVMPStateDeviceDisconnected;
 extern NSString *const kVMPStateDeviceError;
 extern NSString *const kVMPStatePlaying;
 
+@class VMPPipelineManager;
+
 /**
 	@brief Delegate for pipeline state changes
 
@@ -36,7 +38,7 @@ extern NSString *const kVMPStatePlaying;
 
 	@param state The new pipeline state
 */
-- (void)onStateChanged:(NSString *)state;
+- (void)onStateChanged:(NSString *)state manager:(VMPPipelineManager *)mgr;
 
 @optional
 /**
@@ -46,7 +48,7 @@ extern NSString *const kVMPStatePlaying;
 
 	A bus event of the internal pipeline is sent to the delegate.
 */
-- (void)onBusEvent:(GstMessage *)message;
+- (void)onBusEvent:(GstMessage *)message manager:(VMPPipelineManager *)mgr;
 @end
 
 /**
