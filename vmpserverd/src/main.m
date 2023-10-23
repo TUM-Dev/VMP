@@ -14,7 +14,8 @@
 #import "VMPJournal.h"
 #import "VMPServerMain.h"
 
-#define DEFAULT_PATHS @[ @"~/.config/vmpserverd", @"/usr/share/vmpserverd" ]
+#define DEFAULT_PATHS                                                                              \
+	@[ @"~/.config/vmpserverd/config.plist", @"/usr/share/vmpserverd/config.plist" ]
 
 #define USAGE_MSG                                                                                  \
 	"Usage: vmpserverd [OPTION]...\n"                                                              \
