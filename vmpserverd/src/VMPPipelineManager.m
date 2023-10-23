@@ -21,12 +21,18 @@ NSString *const kVMPStatePlaying = @"playing";
 		VMPError(@"Error: %@", error);                                                             \
 	}
 
+// We bridge the GStreamer bus callback mechanism with our VMPPipelineManagerDelegate
 static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 	// Cast back to an Objective-C object
 	__unsafe_unretained VMPPipelineManager *localManager = (__bridge id) mgr;
 
-	VMPInfo(@"Received bus message: %s", GST_MESSAGE_TYPE_NAME(message));
-	VMPInfo(@"Manager from bus: %@", localManager);
+	if (localManager != nil) {
+		// If the delegate responds to the onBusEvent:manager: selector, call it
+		if ([[localManager delegate] respondsToSelector:@selector(onBusEvent:manager:)]) {
+			[[localManager delegate] onBusEvent:message manager:localManager];
+		}
+	}
+
 	return TRUE;
 }
 
