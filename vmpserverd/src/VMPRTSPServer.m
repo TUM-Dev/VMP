@@ -76,6 +76,10 @@
 	VMPInfo(@"Pipeline state for manager %@ changed: %@", mgr, state);
 }
 
+/*
+	This method is called when a bus event is received from the pipeline.
+	We parse the GstMessage object, and log the error/warning.
+*/
 - (void)onBusEvent:(GstMessage *)message manager:(VMPPipelineManager *)mgr {
 	NSString *channel;
 	GstMessageType type;
