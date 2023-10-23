@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "gst/gstmessage.h"
 #include <Foundation/NSDictionary.h>
 #import <glib.h>
 #import <gst/rtsp-server/rtsp-server.h>
@@ -69,11 +70,58 @@
 	return self;
 }
 
-// FIXME: This is bad. We should not have multiple pipelines with the same delegate
 #pragma mark - VMPPipelineManagerDelegate
 
 - (void)onStateChanged:(NSString *)state manager:(VMPPipelineManager *)mgr {
 	VMPInfo(@"Pipeline state for manager %@ changed: %@", mgr, state);
+}
+
+- (void)onBusEvent:(GstMessage *)message manager:(VMPPipelineManager *)mgr {
+	NSString *channel;
+	GstMessageType type;
+	gchar *source;
+
+	channel = [mgr channel];
+	source = GST_OBJECT_NAME(message->src);
+
+	VMPDebug(@"Received bus event from element %s on channel %@: %s", source, channel,
+			 GST_MESSAGE_TYPE_NAME(message));
+
+	type = GST_MESSAGE_TYPE(message);
+	switch (type) {
+	case GST_MESSAGE_ERROR: {
+		GError *err;
+		gchar *debug;
+
+		// Transfer: FULL
+		gst_message_parse_error(message, &err, &debug);
+
+		VMPError(@"Error from element %s on channel %@: %s", source, channel, err->message);
+
+		g_error_free(err);
+		g_free(debug);
+		break;
+	}
+	case GST_MESSAGE_WARNING: {
+		GError *err;
+		gchar *debug;
+
+		// Transfer: FULL
+		gst_message_parse_warning(message, &err, &debug);
+
+		VMPWarn(@"Warning from element %s on channel %@: %s", source, channel, err->message);
+
+		g_error_free(err);
+		g_free(err);
+		break;
+	}
+	case GST_MESSAGE_EOS: {
+		VMPInfo(@"End of stream for channel %@", channel);
+		break;
+	}
+	default:
+		break;
+	}
 }
 
 #pragma mark - Private methods
