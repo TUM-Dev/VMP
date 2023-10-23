@@ -46,6 +46,8 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 @implementation VMPPipelineManager {
   @protected
 	BOOL _pipelineCreated;
+  @private
+	NSString *_description;
 }
 
 + (instancetype)managerWithLaunchArgs:(NSString *)args
@@ -69,6 +71,9 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 		_state = kVMPStateIdle;
 		_pipeline = NULL;
 		_pipelineCreated = NO;
+		_description = [NSString stringWithFormat:@"<%@: %p> channel: %@, launch args: %@",
+												  NSStringFromClass([self class]), self, _channel,
+												  _launchArgs];
 	}
 	return self;
 }
@@ -186,6 +191,10 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 	if ([self pipeline] != NULL) {
 		gst_element_set_state([self pipeline], GST_STATE_NULL);
 	}
+}
+
+- (NSString *)description {
+	return _description;
 }
 
 - (void)dealloc {
