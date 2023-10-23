@@ -85,13 +85,9 @@
 	VMP_ASSERT(_className, @"className must not be nil");
 	VMP_ASSERT(_state, @"state must not be nil");
 
-	NSMutableDictionary *propertyList = [NSMutableDictionary dictionary];
-
-	propertyList[@"name"] = _name;
-	propertyList[@"className"] = _className;
-	propertyList[@"state"] = _state;
-
-	return nil;
+	return
+		@{@"name" : _name, @"className" : _className, @"state" : _state, @"children" : _children};
+}
 }
 
 @end
