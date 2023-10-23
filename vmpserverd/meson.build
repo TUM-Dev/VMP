@@ -75,6 +75,7 @@ source = [
     'src/models/VMPConfigMountpointModel.m',
     'src/models/VMPProfileModel.m',
     'src/models/VMPConfigModel.m',
+    'src/models/VMPElementModel.m',
 ]
 
 include_dirs = include_directories(
