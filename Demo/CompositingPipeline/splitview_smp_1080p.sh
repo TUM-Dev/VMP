@@ -42,4 +42,5 @@ gst-launch-1.0 compositor background=1 name=c \
     sink_1::xpos=$camera_x sink_1::ypos=$camera_y sink_1::width=$camera_width sink_1::height=$camera_height sink_1::sizing-policy=1 \
     ! video/x-raw,width=$output_width,height=$output_height ! autovideosink \
     $presentation \
-    $camera
+    $camera \
+    audiotestsrc is-live=1 ! capsfilter caps=audio/x-raw,format=S16LE,layout=interleaved,channels=2 ! ! voaacenc bitrate=96000 ! autoaudiosink
