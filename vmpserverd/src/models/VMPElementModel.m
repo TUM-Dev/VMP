@@ -88,6 +88,5 @@
 	return
 		@{@"name" : _name, @"className" : _className, @"state" : _state, @"children" : _children};
 }
-}
 
 @end
