@@ -5,6 +5,7 @@
  */
 
 #import "VMPServerMain.h"
+#include "VMPConfigModel.h"
 #import "VMPJournal.h"
 #import "VMPProfileManager.h"
 #import "VMPRTSPServer.h"
@@ -17,20 +18,44 @@
 }
 
 + (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration error:(NSError **)error {
-	return [[VMPServerMain alloc] initWithConfiguration:configuration error:error];
+	return [[VMPServerMain alloc] initWithConfiguration:configuration
+										  forcePlatform:nil
+												  error:error];
+}
+
++ (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration
+						  forcePlatform:(NSString *)platform
+								  error:(NSError **)error {
+	return [[VMPServerMain alloc] initWithConfiguration:configuration
+										  forcePlatform:platform
+												  error:error];
 }
 
 - (instancetype)initWithConfiguration:(VMPConfigModel *)configuration error:(NSError **)error {
+	return [self initWithConfiguration:configuration forcePlatform:nil error:error];
+}
+
+- (instancetype)initWithConfiguration:(VMPConfigModel *)configuration
+						forcePlatform:(NSString *)platform
+								error:(NSError **)error {
 	VMP_ASSERT(configuration, @"Configuration cannot be nil");
 
 	self = [super init];
 	if (self) {
 		_configuration = configuration;
-		_profileMgr = [VMPProfileManager managerWithPath:[configuration profileDirectory]
-												   error:error];
+
+		if (platform) {
+			_profileMgr = [VMPProfileManager managerWithPath:[configuration profileDirectory]
+											 runtimePlatform:platform
+													   error:error];
+		} else {
+			_profileMgr = [VMPProfileManager managerWithPath:[configuration profileDirectory]
+													   error:error];
+		}
 		if (!_profileMgr) {
 			return nil;
 		}
+
 		_rtspServer = [VMPRTSPServer serverWithConfiguration:configuration
 													 profile:[_profileMgr currentProfile]];
 	}

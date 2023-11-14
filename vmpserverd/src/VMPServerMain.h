@@ -20,8 +20,15 @@
 @property (nonatomic, readonly) VMPConfigModel *configuration;
 
 + (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration error:(NSError **)error;
++ (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration
+						  forcePlatform:(NSString *)platform
+								  error:(NSError **)error;
 
 - (instancetype)initWithConfiguration:(VMPConfigModel *)configuration error:(NSError **)error;
+
+- (instancetype)initWithConfiguration:(VMPConfigModel *)configuration
+						forcePlatform:(NSString *)platform
+								error:(NSError **)error;
 
 /**
 	@brief Start the server
