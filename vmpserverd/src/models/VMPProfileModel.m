@@ -13,6 +13,7 @@
 
 NSString *const VMPProfilePlatformAll = @"all";
 NSString *const VMPProfilePlatformDeepstream6 = @"deepstream6";
+NSString *const VMPProfilePlatformVAAPI = @"vaapi";
 
 @implementation VMPProfileModel
 - (id)initWithPropertyList:(id)propertyList error:(NSError **)error {

@@ -12,6 +12,8 @@
 extern NSString *const VMPProfilePlatformAll;
 /// Nvidia Deepstream 6
 extern NSString *const VMPProfilePlatformDeepstream6;
+// VAAPI
+extern NSString *const VMPProfilePlatformVAAPI;
 
 /**
 	@brief Class holding information about a profile

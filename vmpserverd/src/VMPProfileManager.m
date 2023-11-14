@@ -10,6 +10,7 @@
 #import "VMPProfileModel.h"
 
 static NSString *const deviceTreeModelPath = @"/proc/device-tree/model";
+static NSString *const vainfoBinary = @"/usr/bin/vainfo";
 
 // Declare runtimePlatform and currentProfile rw for internal use
 @interface VMPProfileManager ()
@@ -44,6 +45,49 @@ static NSString *const deviceTreeModelPath = @"/proc/device-tree/model";
 			return [VMPProfileManager managerWithPath:path
 									  runtimePlatform:VMPProfilePlatformDeepstream6
 												error:error];
+		}
+	}
+
+	// Check if vainfo binary exists
+	if ([mgr fileExistsAtPath:vainfoBinary]) {
+		// Check if vaapi is supported by running `vainfo` and checking for
+		NSTask *task;
+		NSData *outputData;
+		NSPipe *outputPipe;
+
+		setenv("DISPLAY", ":0", 1); // ":0" is a common virtual display
+
+		task = [[NSTask alloc] init];
+		outputPipe = [NSPipe pipe];
+
+		// Configure Task
+		[task setLaunchPath:vainfoBinary];
+		[task setArguments:@[]];
+		[task setStandardOutput:outputPipe];
+		[task setStandardError:outputPipe];
+
+		VMPDebug(@"Running vainfo ('%@') to check for VAAPI support", vainfoBinary);
+		[task launch];
+		[task waitUntilExit];
+
+		// Read output
+		outputData = [[outputPipe fileHandleForReading] readDataToEndOfFile];
+
+		if ([outputData length] > 0) {
+			VMPDebug(@"vainfo output: %@", [[NSString alloc] initWithData:outputData
+																 encoding:NSUTF8StringEncoding]);
+			NSString *outputString;
+
+			outputString = [[NSString alloc] initWithData:outputData encoding:NSUTF8StringEncoding];
+
+			// TODO: Check explicitly for h264 hardware encoding support
+			// We are currently assuming that it is supported if VAAPI is supported
+			if ([outputString containsString:@"VA-API version"]) {
+				VMPInfo(@"Detected platform supporting VAAPI");
+				return [VMPProfileManager managerWithPath:path
+										  runtimePlatform:VMPProfilePlatformVAAPI
+													error:error];
+			}
 		}
 	}
 
