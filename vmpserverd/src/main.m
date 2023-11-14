@@ -22,7 +22,8 @@
 	"\n"                                                                                           \
 	"  -h, --help\t\t\tPrint this help message\n"                                                  \
 	"  -v, --version\t\t\tPrint version information\n"                                             \
-	"  -c, --config=PATH\t\tPath to configuration file\n"
+	"  -c, --config=PATH\t\tPath to configuration file\n"                                          \
+	"  -f, --force-platform=PLATFORM\tForce platform to PLATFORM\n"
 
 static void version(void) {
 	fprintf(stderr, "%s %d.%d.%d\n", PROJECT_NAME, MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION);
@@ -37,17 +38,22 @@ int main(int argc, char *argv[]) {
 	@autoreleasepool {
 		NSRunLoop *runLoop;
 		NSString *selectedPath;
+		NSString *forcePlatform;
 		NSError *error;
 		NSArray<NSString *> *paths = DEFAULT_PATHS;
 		NSDictionary *plist;
 		VMPConfigModel *configuration;
 
+		// Force platform is nullable
+		forcePlatform = nil;
+
 		struct option longopts[] = {{"help", no_argument, NULL, 'h'},
 									{"version", no_argument, NULL, 'v'},
 									{"config", required_argument, NULL, 'c'},
+									{"force-platform", required_argument, NULL, 'f'},
 									{NULL, 0, NULL, 0}};
 		int ch;
-		while ((ch = getopt_long(argc, argv, "hvc:", longopts, NULL)) != -1) {
+		while ((ch = getopt_long(argc, argv, "hvc:f:", longopts, NULL)) != -1) {
 			switch (ch) {
 			case 'h':
 				usage();
@@ -58,6 +64,14 @@ int main(int argc, char *argv[]) {
 			case 'c':
 				if (optarg) {
 					paths = @[ [NSString stringWithUTF8String:optarg] ];
+				} else {
+					usage();
+					return EXIT_FAILURE;
+				}
+				break;
+			case 'f':
+				if (optarg) {
+					forcePlatform = [NSString stringWithUTF8String:optarg];
 				} else {
 					usage();
 					return EXIT_FAILURE;
@@ -99,7 +113,9 @@ int main(int argc, char *argv[]) {
 		}
 
 		// Create server
-		VMPServerMain *server = [VMPServerMain serverWithConfiguration:configuration error:&error];
+		VMPServerMain *server = [VMPServerMain serverWithConfiguration:configuration
+														 forcePlatform:forcePlatform
+																 error:&error];
 		if (!server) {
 			VMPCritical(@"Failed to create server from configuration: %@", error);
 			return EXIT_FAILURE;
