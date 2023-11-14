@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>name</key>
+        <string>VAAPI Profile</string>
+        <key>identifier</key>
+        <string>com.hugomelder.vaapi</string>
+        <key>version</key>
+        <string>0.1.0</string>
+        <key>description</key>
+        <string>Pipeline profile for hardware-accelerated encoding using Linux VAAPI.</string>
+        <key>supportedPlatforms</key>
+        <array>
+            <string>vaapi</string>
+        </array>
+        
+        <key>mountpoints</key>
+        <dict>
+            <key>single</key>
+            <string>intervideosrc channel={VIDEOCHANNEL.0} ! video/x-raw, width=(int)1920,
+                height=(int)1080 ! queue ! videoconvert ! vaapih264enc bitrate=2500 !
+                rtph264pay name=pay0 pt=96</string>
+            <key>combined</key>
+            <string>compositor name=comp background=1
+ sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810 sink_0::sizing-policy=1
+ sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 sink_1::sizing-policy=1 !
+ video/x-raw,width=1920,height=1080 ! queue ! vaapih264enc bitrate=2500 ! rtph264pay name=pay0 pt=96
+ intervideosrc channel={VIDEOCHANNEL.0} ! videoconvert ! comp.sink_0
+ intervideosrc channel={VIDEOCHANNEL.1} ! videoconvert ! comp.sink_1</string>
+        </dict>
+        
+        <key>channels</key>
+        <dict>
+            <key>v4l2</key>
+            <string>v4l2src device={V4L2DEV} ! videoconvert ! intervideosink channel={VIDEOCHANNEL.0}</string>
+            <key>videoTest</key>
+            <string>videotestsrc is-live=1 ! video/x-raw,width={WIDTH},height={HEIGHT} !
+ intervideosink channel={VIDEOCHANNEL.0}</string>
+        </dict>
+        <key>audioProviders</key>
+        <dict>
+            <key>pulse</key>
+            <string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! queue ! rtpmp4apay name=pay1 pt=97</string>
+            <key>audioTest</key>
+            <string>audiotestsrc ! voaacenc bitrate=96000 ! queue ! rtpmp4apay name=pay1 pt=97</string>
+        </dict>
+    </dict>
+</plist>
