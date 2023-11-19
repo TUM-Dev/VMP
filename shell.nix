@@ -15,6 +15,7 @@ pkgs.mkShell {
     pkgs.gst_all_1.gst-plugins-base
     pkgs.gst_all_1.gst-plugins-good
     pkgs.gst_all_1.gst-libav # For avenc_aac
+    pkgs.gst_all_1.gst-vaapi
 
     pkgs.llvmPackages_14.llvm
     pkgs.llvmPackages_14.clang
