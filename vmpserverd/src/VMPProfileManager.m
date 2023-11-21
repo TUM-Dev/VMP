@@ -10,7 +10,7 @@
 #import "VMPProfileModel.h"
 
 static NSString *const deviceTreeModelPath = @"/proc/device-tree/model";
-static NSString *const vainfoBinary = @"/usr/bin/vainfo";
+static NSString *const envBinary = @"/usr/bin/env";
 
 // Declare runtimePlatform and currentProfile rw for internal use
 @interface VMPProfileManager ()
@@ -48,8 +48,7 @@ static NSString *const vainfoBinary = @"/usr/bin/vainfo";
 		}
 	}
 
-	// Check if vainfo binary exists
-	if ([mgr fileExistsAtPath:vainfoBinary]) {
+	if ([mgr fileExistsAtPath:envBinary]) {
 		// Check if vaapi is supported by running `vainfo` and checking for
 		NSTask *task;
 		NSData *outputData;
@@ -61,12 +60,12 @@ static NSString *const vainfoBinary = @"/usr/bin/vainfo";
 		outputPipe = [NSPipe pipe];
 
 		// Configure Task
-		[task setLaunchPath:vainfoBinary];
-		[task setArguments:@[]];
+		[task setLaunchPath:envBinary];
+		[task setArguments:@[@"vainfo"]];
 		[task setStandardOutput:outputPipe];
 		[task setStandardError:outputPipe];
 
-		VMPDebug(@"Running vainfo ('%@') to check for VAAPI support", vainfoBinary);
+		VMPDebug(@"Running vainfo ('%@' vainfo) to check for VAAPI support", envBinary);
 		[task launch];
 		[task waitUntilExit];
 
