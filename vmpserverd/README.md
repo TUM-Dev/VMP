@@ -42,6 +42,7 @@ Currently the following dependencies are required:
 - gstreamer plugins libav (for aac encoding)
 - udev
 - libsystemd (for writing to the systemd journal)
+- MicroHTTPKit (https://github.com/hmelder/MicroHTTPKit)
 - A working GNUstep Objective-C 2.0 toolchain
 
 Additionally, meson is required for building.
