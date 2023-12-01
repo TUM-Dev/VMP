@@ -63,6 +63,7 @@ int main(int argc, char *argv[]) {
 				return EXIT_SUCCESS;
 			case 'c':
 				if (optarg) {
+					// Overwrite default paths by the specified path to the configuration file
 					paths = @[ [NSString stringWithUTF8String:optarg] ];
 				} else {
 					usage();

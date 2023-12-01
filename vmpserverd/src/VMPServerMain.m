@@ -190,6 +190,7 @@
 	router = [_httpServer router];
 
 	// FIXME: Implement authorization via middleware
+
 	// GET /api/v1/status
 	statusRoute = [HKRoute routeWithPath:@"/api/v1/status"
 								  method:HKHTTPMethodGET
