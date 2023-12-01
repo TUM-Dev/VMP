@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <Foundation/NSObjCRuntime.h>
-#include <MicroHTTPKit/HKHTTPServer.h>
 #import <MicroHTTPKit/MicroHTTPKit.h>
 #import <glib.h>
 
