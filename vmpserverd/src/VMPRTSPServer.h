@@ -28,14 +28,14 @@
 
 	@note This property is readonly, and can only be set during initialisation.
 */
-@property (nonatomic, readonly) VMPConfigModel *configuration;
+@property (readonly) VMPConfigModel *configuration;
 
 /**
 	@brief The current pipeline profile
 
 	@note This property is readonly, and is automatically set during initialisation.
 */
-@property (nonatomic, readonly) VMPProfileModel *currentProfile;
+@property (readonly) VMPProfileModel *currentProfile;
 
 + (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration
 								profile:(VMPProfileModel *)profile;
@@ -48,5 +48,12 @@
 	@return YES if the server was started successfully, NO otherwise.
 */
 - (BOOL)startWithError:(NSError **)error;
+
+/**
+	@brief Stop the RTSP server
+
+	You should not restart the server after calling this method.
+*/
+- (void)stop;
 
 @end

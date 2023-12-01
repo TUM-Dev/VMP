@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "gst/gstmessage.h"
 #include <Foundation/NSDictionary.h>
 #import <glib.h>
 #import <gst/rtsp-server/rtsp-server.h>
@@ -33,12 +32,14 @@
 
 // Redeclare properties as readwrite
 @interface VMPRTSPServer ()
-@property (nonatomic, readwrite) VMPProfileModel *currentProfile;
+@property (readwrite) VMPProfileModel *currentProfile;
 @end
 
 @implementation VMPRTSPServer {
 	GstRTSPServer *_server;
 	GstRTSPMountPoints *_mountPoints;
+	// Registered source ID for the RTSP Server (GSource)
+	guint _serverSourceId;
 
 	NSMutableArray<VMPPipelineManager *> *_managedPipelines;
 }
@@ -405,12 +406,27 @@
 	}
 
 	// Start the RTSP server
-	gst_rtsp_server_attach(_server, NULL);
+	_serverSourceId = gst_rtsp_server_attach(_server, NULL);
 
 	VMPInfo(@"RTSP server listening on address '%@' on port '%@'", [_configuration rtspAddress],
 			[_configuration rtspPort]);
 
 	return YES;
+}
+
+- (void)stop {
+	VMPInfo(@"Stopping RTSP server...");
+
+	// Stop all pipelines
+	for (VMPPipelineManager *mgr in _managedPipelines) {
+		VMPInfo(@"Stopping pipeline for channel %@", [mgr channel]);
+		[mgr stop];
+	}
+
+	// Stop the RTSP server
+	g_source_remove(_serverSourceId);
+
+	return;
 }
 
 - (void)dealloc {
