@@ -24,16 +24,8 @@ gstreamer_rtsp_server_dep = dependency('gstreamer-rtsp-server-1.0')
 udev_dep = dependency('libudev')
 # For logging
 systemd_dep = dependency('libsystemd')
-
-# Detect Nvidia Jetson Hardware with /proc/device-tree/model file and set NV_JETSON flag
-if fs.exists('/proc/device-tree/model')
-    message('Detecting Nvidia Jetson Hardware')
-    model = fs.read('/proc/device-tree/model')
-    if model.contains('NVIDIA Jetson')
-        message('Found Nvidia Jetson in device-tree model description')
-        isNVJetson = true
-    endif
-endif
+# HTTP server
+libmicrohttpkit_dep = dependency('microhttpkit')
 
 # Objective-C (GNUstep) support from gnustep-config
 gnustep_config = find_program('gnustep-config', required: true)
@@ -83,6 +75,13 @@ include_dirs = include_directories(
     'src/models'
 )
 
+# Platform-specific profiles
+profiles = [
+    'profiles/com.hugomelder.deepstream6.plist',
+    'profiles/com.hugomelder.software.plist',
+    'profiles/com.hugomelder.vaapi.plist',
+]
+
 dependencies = [
     glib_dep,
     gstreamer_dep,
@@ -90,6 +89,7 @@ dependencies = [
     gstreamer_rtsp_server_dep,
     udev_dep,
     systemd_dep,
+    libmicrohttpkit_dep,
 ]
 
  # Get version from project and split into major, minor, and patch
@@ -107,14 +107,11 @@ conf_data.set('MINOR_VERSION', minor_version)
 conf_data.set('PATCH_VERSION', patch_version)
 conf_data.set('PROJECT_NAME', '"' + meson.project_name() + '"')
 
-if isNVJetson
-    conf_data.set('NV_JETSON', 1)
-else
-    conf_data.set('NV_JETSON', 0)
-endif
-
 configure_file(input : 'config.h.in',
                output : 'config.h',
                configuration : conf_data)
 
 executable('vmpserverd', source, dependencies: dependencies, include_directories: include_dirs)
+
+# Install profiles in /usr/share/vmpserverd/profiles
+install_data(profiles, install_dir : join_paths(get_option('prefix'), 'share', meson.project_name(), 'profiles'))
