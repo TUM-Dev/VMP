@@ -20,6 +20,8 @@
 
 @property (nonatomic, strong) NSString *rtspPort;
 
+@property (nonatomic, strong) NSString *httpPort;
+
 @property (nonatomic, strong) NSArray<VMPConfigMountpointModel *> *mountpoints;
 
 @property (nonatomic, strong) NSArray<VMPConfigChannelModel *> *channels;

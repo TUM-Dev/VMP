@@ -23,6 +23,7 @@
 		SET_PROPERTY(_profileDirectory, @"profileDirectory");
 		SET_PROPERTY(_rtspAddress, @"rtspAddress");
 		SET_PROPERTY(_rtspPort, @"rtspPort");
+		SET_PROPERTY(_httpPort, @"httpPort");
 
 		SET_PROPERTY(plistMountpoints, @"mountpoints");
 		SET_PROPERTY(plistChannels, @"channels");
@@ -62,6 +63,7 @@
 	VMP_ASSERT(_profileDirectory, @"profileDirectory is nil");
 	VMP_ASSERT(_rtspAddress, @"rtspAddress is nil");
 	VMP_ASSERT(_rtspPort, @"rtspPort is nil");
+	VMP_ASSERT(_httpPort, @"httpPort is nil");
 	VMP_ASSERT(_mountpoints, @"mountpoints is nil");
 	VMP_ASSERT(_channels, @"channels is nil");
 
@@ -80,6 +82,7 @@
 		@"profileDirectory" : _profileDirectory,
 		@"rtspAddress" : _rtspAddress,
 		@"rtspPort" : _rtspPort,
+		@"httpPort" : _httpPort,
 		@"mountpoints" : exportedMountpoints,
 		@"channels" : exportedChannels
 	};
