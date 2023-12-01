@@ -1,0 +1,11 @@
+[Unit]
+Description=Virtual Multimedia Processor (VMP) Server Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=@BINARY_PATH@ -c @DEFAULT_CONFIG_PATH@
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
