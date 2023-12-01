@@ -42,6 +42,8 @@
 - (instancetype)initWithConfiguration:(VMPConfigModel *)configuration
 							  profile:(VMPProfileModel *)profile;
 
+- (NSArray *)channelInfo;
+
 /**
 	@brief Start the RTSP server
 

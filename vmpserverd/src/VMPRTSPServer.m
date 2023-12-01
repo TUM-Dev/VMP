@@ -393,6 +393,23 @@
 	return nil;
 }
 
+#pragma mark - Public methods
+
+- (NSArray *)channelInfo {
+	NSMutableArray *info = [NSMutableArray arrayWithCapacity:[_managedPipelines count]];
+
+	for (VMPPipelineManager *mgr in _managedPipelines) {
+		NSDictionary *cur = @{
+			@"name" : [mgr channel],
+			@"state" : [mgr state],
+		};
+
+		[info addObject:cur];
+	}
+
+	return [NSArray arrayWithArray:info];
+}
+
 - (BOOL)startWithError:(NSError **)error {
 	VMPInfo(@"Starting RTSP server...");
 	// Create and start all (ingress) pipelines
