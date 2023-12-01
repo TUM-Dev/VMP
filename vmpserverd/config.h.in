@@ -11,13 +11,7 @@
 #define MINOR_VERSION @MINOR_VERSION@
 #define PATCH_VERSION @PATCH_VERSION@
 
-#define PROJECT_NAME  @PROJECT_NAME@
+#define PROJECT_NAME @PROJECT_NAME@
 #define BUNDLE_IDENTIFIER "com.hugomelder.vmpserverd"
-
-// Hardware configuration
-
-#if @NV_JETSON@
-#define NV_JETSON
-#endif
 
 #endif // VMP_SERVER_CONFIG_H
