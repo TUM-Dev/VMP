@@ -87,6 +87,8 @@ extern NSString *const kVMPStatePlaying;
 						   channel:(NSString *)channel
 						  delegate:(id<VMPPipelineManagerDelegate>)delegate;
 
+- (NSData *)pipelineDotGraph;
+
 /**
 	@brief Starts the pipeline manager
 

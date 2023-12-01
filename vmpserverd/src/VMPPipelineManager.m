@@ -7,6 +7,8 @@
 #import "VMPPipelineManager.h"
 #import "VMPErrors.h"
 #import "VMPJournal.h"
+#include "gst/gstdebugutils.h"
+#include "gst/gstelement.h"
 
 #include <glib.h>
 
@@ -82,6 +84,26 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 												  _launchArgs];
 	}
 	return self;
+}
+
+- (NSData *)pipelineDotGraph {
+	NSData *data;
+	GstBin *bin;
+	gchar *dot;
+
+	if (_pipeline == NULL || !GST_IS_BIN(_pipeline)) {
+		return nil;
+	}
+
+	bin = GST_BIN(_pipeline);
+	dot = gst_debug_bin_to_dot_data(bin, GST_DEBUG_GRAPH_SHOW_ALL);
+	if (dot == NULL) {
+		return nil;
+	}
+
+	data = [NSData dataWithBytesNoCopy:dot length:strlen(dot) freeWhenDone:YES];
+
+	return data;
 }
 
 - (BOOL)start {
