@@ -42,6 +42,8 @@
 - (instancetype)initWithConfiguration:(VMPConfigModel *)configuration
 							  profile:(VMPProfileModel *)profile;
 
+- (VMPPipelineManager *)pipelineManagerForChannel:(NSString *)channel;
+
 - (NSArray *)channelInfo;
 
 /**

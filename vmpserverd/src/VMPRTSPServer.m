@@ -395,6 +395,16 @@
 
 #pragma mark - Public methods
 
+- (VMPPipelineManager *)pipelineManagerForChannel:(NSString *)channel {
+	for (VMPPipelineManager *mgr in _managedPipelines) {
+		if ([[mgr channel] isEqualToString:channel]) {
+			return mgr;
+		}
+	}
+
+	return nil;
+}
+
 - (NSArray *)channelInfo {
 	NSMutableArray *info = [NSMutableArray arrayWithCapacity:[_managedPipelines count]];
 
