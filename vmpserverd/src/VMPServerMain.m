@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "VMPProfileModel.h"
+#include <Foundation/NSArray.h>
+#include <Foundation/NSDate.h>
+#include <Foundation/NSDictionary.h>
+#include <Foundation/NSISO8601DateFormatter.h>
+#include <MicroHTTPKit/HKRouter.h>
 #import <MicroHTTPKit/MicroHTTPKit.h>
 #import <glib.h>
 
@@ -13,10 +19,15 @@
 #import "VMPRTSPServer.h"
 #import "VMPServerMain.h"
 
+#include "config.h"
+
 @implementation VMPServerMain {
 	VMPRTSPServer *_rtspServer;
 	VMPProfileManager *_profileMgr;
 	HKHTTPServer *_httpServer;
+	NSString *_version;
+	NSDate *_startedAtDate;
+	NSString *_startedAtDateISO8601;
 }
 
 + (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration error:(NSError **)error {
@@ -59,6 +70,14 @@
 			return nil;
 		}
 
+		_version =
+			[NSString stringWithFormat:@"%d.%d.%d", MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION];
+		_startedAtDate = [NSDate date];
+
+		// Create ISO8601 date string
+		NSISO8601DateFormatter *formatter = [[NSISO8601DateFormatter alloc] init];
+		_startedAtDateISO8601 = [formatter stringFromDate:_startedAtDate];
+
 		// Create RTSP server
 		_rtspServer = [VMPRTSPServer serverWithConfiguration:configuration
 													 profile:[_profileMgr currentProfile]];
@@ -71,6 +90,60 @@
 
 	return self;
 }
+
+#pragma mark - HTTP handlers
+
+- (HKHandlerBlock)_statusHandlerV1 {
+	return ^HKHTTPResponse *(HKHTTPRequest *request) {
+		VMPProfileModel *profile;
+		profile = [_profileMgr currentProfile];
+
+		NSDictionary *response = @{
+			@"version" : _version,
+			@"platform" : [_profileMgr runtimePlatform],
+			@"profile" : @{
+				@"name" : [profile name],
+				@"identifier" : [profile identifier],
+				@"version" : [profile version],
+				@"description" : [profile description],
+			},
+			@"startedAt" : _startedAtDateISO8601,
+		};
+
+		return [HKHTTPJSONResponse responseWithJSONObject:response status:200 error:NULL];
+	};
+}
+
+- (HKHandlerBlock)_configHandlerV1 {
+	return ^HKHTTPResponse *(HKHTTPRequest *request) {
+		return [HKHTTPJSONResponse responseWithJSONObject:[_configuration propertyList]
+												   status:200
+													error:NULL];
+	};
+}
+
+- (void)setupHTTPHandlers {
+	HKRouter *router;
+	HKRoute *statusRoute;
+	HKRoute *configRoute;
+
+	router = [_httpServer router];
+
+	// FIXME: Implement authorization via middleware
+	// GET /api/v1/status
+	statusRoute = [HKRoute routeWithPath:@"/api/v1/status"
+								  method:HKHTTPMethodGET
+								 handler:[self _statusHandlerV1]];
+	// GET /api/v1/config
+	configRoute = [HKRoute routeWithPath:@"/api/v1/config"
+								  method:HKHTTPMethodGET
+								 handler:[self _configHandlerV1]];
+
+	[router registerRoute:statusRoute];
+	[router registerRoute:configRoute];
+}
+
+#pragma mark - Server Lifecycle
 
 - (void)iterateMainLoop:(NSTimer *)timer {
 	// One iteration of the main loop in the default context. Non-blocking.
@@ -92,8 +165,7 @@
 		return NO;
 	}
 
-	// TODO: Install HTTP handlers
-
+	[self setupHTTPHandlers];
 	if (![_httpServer startWithError:error]) {
 		return NO;
 	}
