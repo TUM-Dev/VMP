@@ -19,6 +19,12 @@
     <key>rtspPort</key>
     <string>8554</string>
     <!--
+        Specify the port of the HTTP server here.
+        We are currently listening to all interfaces.
+    -->
+    <key>httpPort</key>
+    <string>8080</string>
+    <!--
         Specify the mountpoints of the RTSP server here.
 
         A mountpoint consists of a path, type, and channel configuration.
