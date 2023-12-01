@@ -17,7 +17,7 @@
 */
 @interface VMPServerMain : NSObject
 
-@property (nonatomic, readonly) VMPConfigModel *configuration;
+@property (readonly) VMPConfigModel *configuration;
 
 + (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration error:(NSError **)error;
 + (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration
@@ -34,5 +34,7 @@
 	@brief Start the server
 */
 - (BOOL)runWithError:(NSError **)error;
+
+- (void)gracefulShutdown;
 
 @end

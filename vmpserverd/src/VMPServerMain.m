@@ -86,4 +86,9 @@
 	return YES;
 }
 
+- (void)gracefulShutdown {
+	VMPInfo(@"Shutting down...");
+	[_rtspServer stop];
+}
+
 @end
