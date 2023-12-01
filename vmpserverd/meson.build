@@ -46,8 +46,9 @@ gnustep_base_libs = run_command(gnustep_config, '--base-libs', check: true).stdo
 
 # Filter out flags that are handled by Meson's built-in options
 filtered_objc_flags = []
+
 foreach flag : gnustep_flags
-if flag != '-Wall' and flag != '-g' and flag != '-O2'
+if flag != '-Wall' and flag != '-g' and flag != '-O2' and flag != '-MMD'
     filtered_objc_flags += flag
 endif
 endforeach
