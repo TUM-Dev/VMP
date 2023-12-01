@@ -4,17 +4,21 @@
  * SPDX-License-Identifier: MIT
  */
 
-#import "VMPServerMain.h"
-#include "VMPConfigModel.h"
+#include <Foundation/NSObjCRuntime.h>
+#include <MicroHTTPKit/HKHTTPServer.h>
+#import <MicroHTTPKit/MicroHTTPKit.h>
+#import <glib.h>
+
+#import "VMPConfigModel.h"
 #import "VMPJournal.h"
 #import "VMPProfileManager.h"
 #import "VMPRTSPServer.h"
-
-#import <glib.h>
+#import "VMPServerMain.h"
 
 @implementation VMPServerMain {
 	VMPRTSPServer *_rtspServer;
 	VMPProfileManager *_profileMgr;
+	HKHTTPServer *_httpServer;
 }
 
 + (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration error:(NSError **)error {
@@ -43,6 +47,7 @@
 	self = [super init];
 	if (self) {
 		_configuration = configuration;
+		NSUInteger port;
 
 		if (platform) {
 			_profileMgr = [VMPProfileManager managerWithPath:[configuration profileDirectory]
@@ -56,8 +61,14 @@
 			return nil;
 		}
 
+		// Create RTSP server
 		_rtspServer = [VMPRTSPServer serverWithConfiguration:configuration
 													 profile:[_profileMgr currentProfile]];
+
+		// Create HTTP server
+		port = [[configuration httpPort] integerValue];
+		// We install HTTP handlers later on when -runWithError: is invoked
+		_httpServer = [HKHTTPServer serverWithPort:port];
 	}
 
 	return self;
@@ -83,12 +94,21 @@
 		return NO;
 	}
 
+	// TODO: Install HTTP handlers
+
+	if (![_httpServer startWithError:error]) {
+		return NO;
+	}
+
+	VMPInfo(@"HTTP server listening on port %@", [_configuration httpPort]);
+
 	return YES;
 }
 
 - (void)gracefulShutdown {
 	VMPInfo(@"Shutting down...");
 	[_rtspServer stop];
+	[_httpServer stop];
 }
 
 @end
