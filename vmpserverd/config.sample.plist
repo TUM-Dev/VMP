@@ -8,7 +8,7 @@
         Profiles describe platform-dependent pipelines used for stream processing.
     -->
     <key>profileDirectory</key>
-    <string>/home/vm/TUMmp/vmpserverd/profiles</string>
+    <string>/usr/local/share/vmpserverd/profiles</string>
 
     <!--
         Specify the address and port of the RTSP server here.
