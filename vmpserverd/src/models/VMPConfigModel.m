@@ -55,36 +55,45 @@
 	return self;
 }
 
-- (id)propertyList {
+- (NSArray *)propertyListMountpoints {
 	NSMutableArray *exportedMountpoints;
+
+	exportedMountpoints = [NSMutableArray arrayWithCapacity:[_mountpoints count]];
+
+	for (VMPConfigMountpointModel *mountpoint in _mountpoints) {
+		[exportedMountpoints addObject:[mountpoint propertyList]];
+	}
+
+	return [exportedMountpoints copy];
+}
+
+- (NSArray *)propertyListChannels {
 	NSMutableArray *exportedChannels;
 
+	exportedChannels = [NSMutableArray arrayWithCapacity:[_channels count]];
+
+	for (VMPConfigChannelModel *channel in _channels) {
+		[exportedChannels addObject:[channel propertyList]];
+	}
+
+	return [exportedChannels copy];
+}
+
+- (id)propertyList {
 	VMP_ASSERT(_name, @"name is nil");
-	VMP_ASSERT(_profileDirectory, @"profileDirectory is nil");
 	VMP_ASSERT(_rtspAddress, @"rtspAddress is nil");
 	VMP_ASSERT(_rtspPort, @"rtspPort is nil");
 	VMP_ASSERT(_httpPort, @"httpPort is nil");
 	VMP_ASSERT(_mountpoints, @"mountpoints is nil");
 	VMP_ASSERT(_channels, @"channels is nil");
 
-	exportedMountpoints = [NSMutableArray array];
-	exportedChannels = [NSMutableArray array];
-
-	for (VMPConfigMountpointModel *mountpoint in _mountpoints) {
-		[exportedMountpoints addObject:[mountpoint propertyList]];
-	}
-	for (VMPConfigChannelModel *channel in _channels) {
-		[exportedChannels addObject:[channel propertyList]];
-	}
-
 	return @{
 		@"name" : _name,
-		@"profileDirectory" : _profileDirectory,
 		@"rtspAddress" : _rtspAddress,
 		@"rtspPort" : _rtspPort,
 		@"httpPort" : _httpPort,
-		@"mountpoints" : exportedMountpoints,
-		@"channels" : exportedChannels
+		@"mountpoints" : [self propertyListMountpoints],
+		@"channels" : [self propertyListChannels],
 	};
 }
 

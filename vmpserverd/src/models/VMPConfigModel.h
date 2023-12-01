@@ -26,6 +26,9 @@
 
 @property (nonatomic, strong) NSArray<VMPConfigChannelModel *> *channels;
 
+- (NSArray *)propertyListMountpoints;
+- (NSArray *)propertyListChannels;
+
 - (id)initWithPropertyList:(id)propertyList error:(NSError **)error;
 
 - (id)propertyList;
