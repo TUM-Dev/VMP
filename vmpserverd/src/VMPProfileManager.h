@@ -21,9 +21,9 @@
 */
 @interface VMPProfileManager : NSObject
 
-@property (nonatomic, readonly) NSString *runtimePlatform;
-@property (nonatomic, readonly) VMPProfileModel *currentProfile;
-@property (nonatomic, strong) NSArray<VMPProfileModel *> *availableProfiles;
+@property (readonly) NSString *runtimePlatform;
+@property (readonly) VMPProfileModel *currentProfile;
+@property (strong) NSArray<VMPProfileModel *> *availableProfiles;
 
 /**
 	@brief Autodetects the runtimePlatform during initialisation

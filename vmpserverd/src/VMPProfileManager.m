@@ -15,8 +15,8 @@ static NSString *const envBinary = @"/usr/bin/env";
 // Declare runtimePlatform and currentProfile rw for internal use
 @interface VMPProfileManager ()
 
-@property (nonatomic, readwrite) NSString *runtimePlatform;
-@property (nonatomic, readwrite) VMPProfileModel *currentProfile;
+@property (readwrite) NSString *runtimePlatform;
+@property (readwrite) VMPProfileModel *currentProfile;
 
 @end
 
@@ -61,7 +61,7 @@ static NSString *const envBinary = @"/usr/bin/env";
 
 		// Configure Task
 		[task setLaunchPath:envBinary];
-		[task setArguments:@[@"vainfo"]];
+		[task setArguments:@[ @"vainfo" ]];
 		[task setStandardOutput:outputPipe];
 		[task setStandardError:outputPipe];
 
