@@ -4,11 +4,13 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "VMPPipelineManager.h"
 #include "VMPProfileModel.h"
 #include <Foundation/NSArray.h>
 #include <Foundation/NSDate.h>
 #include <Foundation/NSDictionary.h>
 #include <Foundation/NSISO8601DateFormatter.h>
+#include <MicroHTTPKit/HKHTTPResponse.h>
 #include <MicroHTTPKit/HKRouter.h>
 #import <MicroHTTPKit/MicroHTTPKit.h>
 #import <glib.h>
@@ -122,10 +124,44 @@
 	};
 }
 
+- (HKHandlerBlock)_channelGraphHandlerV1 {
+	return ^HKHTTPResponse *(HKHTTPRequest *request) {
+		NSString *channel;
+		NSDictionary *headers;
+		VMPPipelineManager *mgr;
+
+		channel = [request queryParameters][@"channel"];
+
+		if (!channel) {
+			NSDictionary *response = @{
+				@"error" : @"Missing channel parameter",
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:400 error:NULL];
+		}
+
+		mgr = [_rtspServer pipelineManagerForChannel:channel];
+		if (!mgr) {
+			NSDictionary *response = @{
+				@"error" : @"Channel not found",
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:404 error:NULL];
+		}
+
+		headers = @{
+			@"Content-Type" : @"text/plain",
+		};
+
+		return [[HKHTTPResponse alloc] initWithData:[mgr pipelineDotGraph]
+											headers:headers
+											 status:200];
+	};
+}
+
 - (void)setupHTTPHandlers {
 	HKRouter *router;
 	HKRoute *statusRoute;
 	HKRoute *configRoute;
+	HKRoute *channelGraphRoute;
 
 	router = [_httpServer router];
 
@@ -138,9 +174,14 @@
 	configRoute = [HKRoute routeWithPath:@"/api/v1/config"
 								  method:HKHTTPMethodGET
 								 handler:[self _configHandlerV1]];
+	// GET /api/v1/channel/graph
+	channelGraphRoute = [HKRoute routeWithPath:@"/api/v1/channel/graph"
+										method:HKHTTPMethodGET
+									   handler:[self _channelGraphHandlerV1]];
 
 	[router registerRoute:statusRoute];
 	[router registerRoute:configRoute];
+	[router registerRoute:channelGraphRoute];
 }
 
 #pragma mark - Server Lifecycle
