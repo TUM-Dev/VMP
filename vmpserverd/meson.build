@@ -69,7 +69,6 @@ source = [
     'src/VMPPipelineManager.m',
     'src/VMPErrors.m',
     'src/VMPJournal.m',
-    'src/VMPHTTPServer.m',
     'src/NSString+substituteVariables.m',
     # Models
     'src/models/VMPConfigChannelModel.m',
