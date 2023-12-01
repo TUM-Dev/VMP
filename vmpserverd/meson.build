@@ -20,11 +20,11 @@ glib_dep = dependency('glib-2.0')
 gstreamer_dep = dependency('gstreamer-1.0')
 gstreamer_rtsp_dep = dependency('gstreamer-rtsp-1.0')
 gstreamer_rtsp_server_dep = dependency('gstreamer-rtsp-server-1.0')
-# For linux device monitoring
+# Linux device metadata and monitoring
 udev_dep = dependency('libudev')
-# For logging
+# For structured logging to the systemd journal
 systemd_dep = dependency('libsystemd')
-# HTTP server
+# HTTP server library for the REST API
 libmicrohttpkit_dep = dependency('microhttpkit')
 
 # Objective-C (GNUstep) support from gnustep-config
@@ -100,18 +100,39 @@ major_version = version_split[0]
 minor_version = version_split[1]
 patch_version = version_split[2]
 
-# Add version to configuration data
+prefix = get_option('prefix')
+binary_path = join_paths(prefix, get_option('bindir'), meson.project_name())
+profiles_directory = join_paths(prefix, get_option('datadir'), meson.project_name(), 'profiles')
+default_config_path = join_paths(prefix, get_option('datadir'), meson.project_name())
+systemd_service_path = join_paths(get_option('prefix'), 'lib', 'systemd', 'system')
+
+# Configure the systemd service file
 conf_data = configuration_data()
 conf_data.set('MAJOR_VERSION', major_version)
 conf_data.set('MINOR_VERSION', minor_version)
 conf_data.set('PATCH_VERSION', patch_version)
 conf_data.set('PROJECT_NAME', '"' + meson.project_name() + '"')
+conf_data.set('BINARY_PATH', binary_path)
+conf_data.set('PROFILES_DIRECTORY', profiles_directory)
+conf_data.set('DEFAULT_CONFIG_PATH', join_paths(default_config_path, 'config.plist'))
 
 configure_file(input : 'config.h.in',
                output : 'config.h',
                configuration : conf_data)
 
-executable('vmpserverd', source, dependencies: dependencies, include_directories: include_dirs)
+configure_file(input : 'vmpserverd.service.in',
+               output : 'vmpserverd.service',
+               configuration: conf_data)
 
-# Install profiles in /usr/share/vmpserverd/profiles
-install_data(profiles, install_dir : join_paths(get_option('prefix'), 'share', meson.project_name(), 'profiles'))
+configure_file(input : 'config.plist.in',
+               output : 'config.plist',
+               configuration: conf_data)
+
+# Build the executable
+executable(meson.project_name(), source, dependencies: dependencies, include_directories: include_dirs, install: true)
+
+install_data(profiles, install_dir : profiles_directory)
+# Install a default config file
+install_data(join_paths(meson.current_build_dir(), 'config.plist'), install_dir : default_config_path)
+# Install the systemd service file
+install_data(join_paths(meson.current_build_dir(), 'vmpserverd.service'), install_dir : systemd_service_path)
