@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <Foundation/NSDictionary.h>
 #import <glib.h>
 #import <gst/rtsp-server/rtsp-server.h>
 
@@ -30,6 +29,125 @@
 								 userInfo:userInfo];                                               \
 	}
 
+#pragma mark - RTSP pipeline state
+
+// We have the problem that we cannot identify a mountpoint in the media-constructed callback.
+// Therefore, we construct a state object, which contains the mountpoint name, and a pointer to the
+// VMPRTSPServer instance.
+//
+// This is a workaround, because we are limited by the GStreamer RTSP server API.
+@interface _VMPRTSPPipelineState : NSObject
+
+@property (nonatomic) NSString *mountpointName;
+@property (nonatomic) NSData *lastDotGraph;
+@property (nonatomic) NSString *state;
+
+// Pointer to the RTSP server instance
+// Avoid a retain cycle by using a weak reference
+@property (nonatomic, weak) VMPRTSPServer *server;
+
+- (instancetype)initWithServer:(VMPRTSPServer *)server mountpointName:(NSString *)name;
+@end
+
+@implementation _VMPRTSPPipelineState
+- (instancetype)initWithServer:(VMPRTSPServer *)server mountpointName:(NSString *)name {
+	self = [super init];
+	if (self) {
+		_server = server;
+		_mountpointName = name;
+		_state = kVMPStateIdle;
+	}
+	return self;
+}
+
+@end
+
+#pragma mark - RTSP Media Construction Callbacks
+
+/* signal callback when the media is prepared for streaming. We can get the
+ * session manager for each of the streams and connect to some signals. */
+static void media_prepared_cb(GstRTSPMedia *media, gpointer user_data) {
+	@autoreleasepool {
+		guint n_streams;
+		GstElement *element;
+		_VMPRTSPPipelineState *state;
+
+		state = (__bridge _VMPRTSPPipelineState *) user_data;
+
+		element = gst_rtsp_media_get_element(media);
+		n_streams = gst_rtsp_media_n_streams(media);
+
+		VMPInfo(@"media %p is prepared for mountpoint '%@' and has %u streams", media,
+				[state mountpointName], n_streams);
+
+		if (GST_IS_BIN(element)) {
+			NSData *dot_graph;
+			GstBin *bin;
+			gchar *dot_graph_str;
+
+			bin = GST_BIN(element);
+
+			dot_graph_str = gst_debug_bin_to_dot_data(bin, GST_DEBUG_GRAPH_SHOW_ALL);
+			if (dot_graph_str) {
+				dot_graph = [NSData dataWithBytesNoCopy:dot_graph_str
+												 length:strlen(dot_graph_str)
+										   freeWhenDone:YES];
+				[state setLastDotGraph:dot_graph];
+			}
+		}
+
+		gst_object_unref(element);
+	}
+}
+
+static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *media,
+								 gpointer user_data) {
+	@autoreleasepool {
+		GstElement *element;
+		gchar *dot_graph_str;
+		NSData *dot_graph;
+		_VMPRTSPPipelineState *state;
+
+		state = (__bridge _VMPRTSPPipelineState *) user_data;
+
+		VMPInfo(@"Pipeline for mountpoint '%@' constructed successfully", [state mountpointName]);
+
+		// Connect to the "prepared" signal to get more information about the streams once
+		// initialisation is complete
+		g_signal_connect(media, "prepared", (GCallback) media_prepared_cb, user_data);
+
+		element = gst_rtsp_media_get_element(media);
+
+		if (GST_IS_BIN(element)) {
+			VMPDebug(@"Pipeline for mountpoint '%@' is a bin", [state mountpointName]);
+			GstBin *bin;
+			bin = GST_BIN(element);
+
+			// Get first graph in case further initialisation fails in media_prepared_cb
+			dot_graph_str = gst_debug_bin_to_dot_data(bin, GST_DEBUG_GRAPH_SHOW_ALL);
+
+			if (dot_graph_str) {
+				VMPDebug(@"Dot graph for mountpoint '%@' was generated successfully",
+						 [state mountpointName]);
+				dot_graph = [NSData dataWithBytesNoCopy:dot_graph_str
+												 length:strlen(dot_graph_str)
+										   freeWhenDone:YES];
+			} else {
+				VMPDebug(@"Dot graph for mountpoint '%@' could not be generated",
+						 [state mountpointName]);
+				dot_graph = nil;
+			}
+
+			// Update the state object
+			[state setLastDotGraph:dot_graph];
+		}
+
+		gst_object_unref(element);
+	}
+}
+
+#pragma mark - VMPRTSPServer
+
 // Redeclare properties as readwrite
 @interface VMPRTSPServer ()
 @property (readwrite) VMPProfileModel *currentProfile;
@@ -38,11 +156,14 @@
 @implementation VMPRTSPServer {
 	GstRTSPServer *_server;
 	GstRTSPMountPoints *_mountPoints;
+
 	// Registered source ID for the RTSP Server (GSource)
 	guint _serverSourceId;
 
 	NSMutableArray<VMPPipelineManager *> *_managedPipelines;
+	NSMutableDictionary<NSString *, _VMPRTSPPipelineState *> *_rtspPipelineStates;
 }
+
 + (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration
 								profile:(VMPProfileModel *)profile {
 	return [[VMPRTSPServer alloc] initWithConfiguration:configuration profile:profile];
@@ -59,6 +180,8 @@
 		_server = gst_rtsp_server_new();
 		_mountPoints = gst_rtsp_server_get_mount_points(_server);
 		_currentProfile = profile;
+		_rtspPipelineStates =
+			[NSMutableDictionary dictionaryWithCapacity:[[_configuration mountpoints] count]];
 
 		NSUInteger channelCount = [[_configuration channels] count];
 		_managedPipelines = [NSMutableArray arrayWithCapacity:channelCount];
@@ -131,8 +254,8 @@
 
 #pragma mark - Private methods
 
-// Iterate over the channelConfiguration array, create all pipeline managers acordingly, and start
-// them.
+// Iterate over the channelConfiguration array, create all pipeline managers acordingly, and
+// start them.
 - (BOOL)_startChannelPipelinesWithError:(NSError **)error {
 	NSArray *channels;
 	VMPInfo(@"Starting channel pipelines");
@@ -226,9 +349,9 @@
 }
 
 /*
-	We use intervideo{src,sink} for separating source, and pipelines managed by the GStreamer RTSP
-   server. Separating audio pipelines is much more difficult, and as of writing this, there is a
-   major bug in the interaudio{src,sink}, which makes multiple listening clients impossible
+	We use intervideo{src,sink} for separating source, and pipelines managed by the GStreamer
+   RTSP server. Separating audio pipelines is much more difficult, and as of writing this, there
+   is a major bug in the interaudio{src,sink}, which makes multiple listening clients impossible
    (see: https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/issues/1788)
 
    Instead, we use the concept of channels for configuration, but use sub-pipelines for audio
@@ -242,12 +365,21 @@
 	NSArray *mountpoints = [_configuration mountpoints];
 
 	for (VMPConfigMountpointModel *mountpoint in mountpoints) {
-		NSString *type, *path;
+		NSString *name, *type, *path;
 		NSDictionary<NSString *, id> *properties;
+		_VMPRTSPPipelineState *state;
 
+		name = [mountpoint name];
 		type = [mountpoint type];
 		path = [mountpoint path];
 		properties = [mountpoint properties];
+
+		state = [[_VMPRTSPPipelineState alloc] initWithServer:self mountpointName:name];
+
+		// Add state object to dictionary
+		_rtspPipelineStates[name] = state;
+
+		VMPInfo(@"Creating mountpoint '%@' of type '%@' at path '%@'", name, type, path);
 
 		/* Set up a combined mountpoint with two video channels, and one audio channel.
 		 * The secondary video channel can be used for a camera.
@@ -294,6 +426,8 @@
 			gst_rtsp_media_factory_set_shared(factory, TRUE);
 
 			gst_rtsp_media_factory_set_launch(factory, (const gchar *) [pipeline UTF8String]);
+			g_signal_connect(factory, "media-constructed", (GCallback) media_constructed_cb,
+							 (__bridge void *) state);
 			gst_rtsp_mount_points_add_factory(_mountPoints, (const gchar *) [path UTF8String],
 											  factory);
 		} else if ([type isEqualToString:VMPConfigMountpointTypeSingle]) {
@@ -335,6 +469,9 @@
 			VMPDebug(@"Combined single mountpoint pipeline: %@", pipeline);
 
 			gst_rtsp_media_factory_set_launch(factory, (const gchar *) [pipeline UTF8String]);
+
+			g_signal_connect(factory, "media-constructed", (GCallback) media_constructed_cb,
+							 (__bridge void *) state);
 
 			gst_rtsp_mount_points_add_factory(_mountPoints, (const gchar *) [path UTF8String],
 											  factory);
@@ -394,6 +531,17 @@
 }
 
 #pragma mark - Public methods
+
+- (NSData *)dotGraphForMountPointName:(NSString *)name {
+	_VMPRTSPPipelineState *state;
+
+	state = _rtspPipelineStates[name];
+	if (!state) {
+		return nil;
+	}
+
+	return [state lastDotGraph];
+}
 
 - (VMPPipelineManager *)pipelineManagerForChannel:(NSString *)channel {
 	for (VMPPipelineManager *mgr in _managedPipelines) {

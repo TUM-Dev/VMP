@@ -44,6 +44,8 @@
 
 - (VMPPipelineManager *)pipelineManagerForChannel:(NSString *)channel;
 
+- (NSData *)dotGraphForMountPointName:(NSString *)name;
+
 - (NSArray *)channelInfo;
 
 /**
