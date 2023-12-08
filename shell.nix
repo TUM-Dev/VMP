@@ -1,4 +1,7 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {
+    overlays = [ (import ./nix/overlay.nix) ];
+  }
+}:
 
 let
     #unstablePkgs = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz") {};
@@ -46,6 +49,9 @@ pkgs.mkShell {
 
     pkgs.udev
     pkgs.udev.dev
+
+    # MicroHTTPKit
+    pkgs.microhttpkit
 
   ];
 
