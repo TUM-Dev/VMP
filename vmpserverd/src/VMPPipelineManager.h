@@ -14,6 +14,9 @@ extern NSString *const kVMPStateDeviceConnected;
 extern NSString *const kVMPStateDeviceDisconnected;
 extern NSString *const kVMPStateDeviceError;
 extern NSString *const kVMPStatePlaying;
+extern NSString *const kVMPStateError;
+
+extern NSString *const kVMPStatisticsNumberOfRestarts;
 
 @class VMPPipelineManager;
 
@@ -67,8 +70,28 @@ extern NSString *const kVMPStatePlaying;
 @property (nonatomic, strong) NSString *launchArgs;
 @property (nonatomic, strong) NSString *channel;
 @property (nonatomic, readonly) NSString *state;
+
+/**
+	@brief The underlying GStreamer pipeline
+*/
 @property (nonatomic, readonly) GstElement *pipeline;
 
+/**
+	@brief The statistics of the pipeline
+
+	The following statistics are available:
+	- "numberOfRestarts" - The number of times the pipeline has been restarted
+*/
+@property (nonatomic, readonly) NSDictionary *statistics;
+
+/**
+	@brief Returns a pipeline manager initialized with the given channel
+
+	@param channel The channel name for registering the pipeline
+	@param delegate The delegate to notify of state changes
+
+	@return The pipeline manager for the given channel
+*/
 + (instancetype)managerWithLaunchArgs:(NSString *)args
 							  channel:(NSString *)channel
 							 delegate:(id<VMPPipelineManagerDelegate>)delegate;
@@ -87,6 +110,11 @@ extern NSString *const kVMPStatePlaying;
 						   channel:(NSString *)channel
 						  delegate:(id<VMPPipelineManagerDelegate>)delegate;
 
+/*
+	@brief Retrieve the GStreamer dot graph of the pipeline
+
+	@return ASCII-encoded dot graph of the pipeline
+*/
 - (NSData *)pipelineDotGraph;
 
 /**
@@ -100,4 +128,9 @@ extern NSString *const kVMPStatePlaying;
 	@brief Stops the pipeline manager
 */
 - (void)stop;
+
+/**
+	@brief Schedules a restart of the pipeline via the run loop
+*/
+- (void)restart;
 @end

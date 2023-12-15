@@ -9,6 +9,9 @@
 #import "VMPJournal.h"
 #include "gst/gstdebugutils.h"
 #include "gst/gstelement.h"
+#include <Foundation/NSDate.h>
+#include <Foundation/NSDictionary.h>
+#include <Foundation/NSRunLoop.h>
 
 #include <glib.h>
 
@@ -17,6 +20,9 @@ NSString *const kVMPStateDeviceConnected = @"device_connected";
 NSString *const kVMPStateDeviceDisconnected = @"device_disconnected";
 NSString *const kVMPStateDeviceError = @"device_error";
 NSString *const kVMPStatePlaying = @"playing";
+NSString *const kVMPStateError = @"error";
+
+NSString *const kVMPStatisticsNumberOfRestarts = @"numberOfRestarts";
 
 #define PRINT_ERROR(error)                                                                         \
 	if (error != nil) {                                                                            \
@@ -43,11 +49,11 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 
 @property (nonatomic, readwrite) NSString *state;
 @property (nonatomic, readwrite) GstElement *pipeline;
+@property (nonatomic, readwrite) NSMutableDictionary *statistics;
 
 // Pipeline management
 - (BOOL)_createPipelineWithError:(NSError **)error;
 - (BOOL)_resumePipelineWithError:(NSError **)error;
-- (void)_resetPipeline;
 
 @end
 
@@ -56,6 +62,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 	BOOL _pipelineCreated;
   @private
 	NSString *_description;
+	NSInteger _numberOfStarts;
 }
 
 + (instancetype)managerWithLaunchArgs:(NSString *)args
@@ -67,9 +74,13 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 - (instancetype)initWithLaunchArgs:(NSString *)args
 						   channel:(NSString *)channel
 						  delegate:(id<VMPPipelineManagerDelegate>)delegate {
+	NSDictionary *initialStatistics;
+
 	NSAssert(args, @"Launch arguments cannot be nil");
 	NSAssert(channel, @"Channel cannot be nil");
 	NSAssert(delegate, @"Delegate cannot be nil");
+
+	initialStatistics = @{kVMPStatisticsNumberOfRestarts : @0};
 
 	self = [super init];
 	if (self) {
@@ -79,6 +90,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 		_state = kVMPStateIdle;
 		_pipeline = NULL;
 		_pipelineCreated = NO;
+		_statistics = [NSMutableDictionary dictionaryWithDictionary:initialStatistics];
 		_description = [NSString stringWithFormat:@"<%@: %p> channel: %@, launch args: %@",
 												  NSStringFromClass([self class]), self, _channel,
 												  _launchArgs];
@@ -109,6 +121,16 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 - (BOOL)start {
 	NSError *error = nil;
 
+	// Do nothing if the pipeline is already created
+	if (_pipelineCreated) {
+		VMPError(@"Pipeline for channel %@ already created", _channel);
+		return NO;
+	}
+
+	// Update restart statistics
+	_statistics[kVMPStatisticsNumberOfRestarts] = [NSNumber numberWithInteger:_numberOfStarts];
+	_numberOfStarts++;
+
 	// Start pipeline immediately
 	if (![self _createPipelineWithError:&error]) {
 		PRINT_ERROR(error);
@@ -120,10 +142,6 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 	}
 
 	return YES;
-}
-
-- (void)stop {
-	[self _resetPipeline];
 }
 
 /* Create a pipeline and return the status.
@@ -162,6 +180,14 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 
 	VMPDebug(@"Created pipeline with launch args: %@", _launchArgs);
 
+	// Transfer: Full
+	bus = gst_element_get_bus(_pipeline);
+	if (bus != NULL) {
+		// Bridge object pointer without touching reference count
+		gst_bus_add_watch(bus, (GstBusFunc) gstreamer_bus_cb, (__bridge void *) self);
+		gst_object_unref(bus);
+	}
+
 	// Set pipeline state to playing
 	ret = gst_element_set_state(_pipeline, GST_STATE_PLAYING);
 	if (ret == GST_STATE_CHANGE_FAILURE) {
@@ -178,15 +204,6 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 									 userInfo:userInfo];
 		}
 		return NO;
-	}
-
-	// Transfer: Full
-	bus = gst_element_get_bus(_pipeline);
-	if (bus != NULL) {
-		// Bridge object pointer without touching reference count
-		// TODO: figure out bridging problem
-		gst_bus_add_watch(bus, (GstBusFunc) gstreamer_bus_cb, (__bridge void *) self);
-		gst_object_unref(bus);
 	}
 
 	return YES;
@@ -215,10 +232,39 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 	return YES;
 }
 
-- (void)_resetPipeline {
+- (void)stop {
 	if ([self pipeline] != NULL) {
 		gst_element_set_state([self pipeline], GST_STATE_NULL);
+		gst_object_unref(_pipeline);
+
+		_pipeline = NULL;
+		_pipelineCreated = NO;
+
+		[self setState:kVMPStateIdle];
 	}
+}
+
+// TODO: We should use a block with performBlock: instead of a trampoline method
+- (void)_startFromRunloop {
+	if (![self start]) {
+		// Schedule a new pipeline restart
+		[self restart];
+	}
+}
+
+- (void)restart {
+	NSRunLoop *runloop;
+	NSTimeInterval delay;
+
+	VMPInfo(@"Schedule pipeline restart for channel '%@'", _channel);
+
+	[self stop];
+
+	runloop = [NSRunLoop currentRunLoop];
+	delay = 1.0;
+
+	// Schedule pipeline restart
+	[runloop performSelector:@selector(_startFromRunloop) withObject:self afterDelay:delay];
 }
 
 - (NSString *)description {
@@ -226,7 +272,9 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 }
 
 - (void)dealloc {
-	gst_object_unref([self pipeline]);
+	// If not already unreferenced by stop, unreference pipeline
+	// gst_object_unref handles NULL pointers
+	gst_object_unref(_pipeline);
 }
 
 @end
