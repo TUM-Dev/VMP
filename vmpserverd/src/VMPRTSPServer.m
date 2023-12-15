@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <Foundation/NSDate.h>
+#include <Foundation/NSRunLoop.h>
 #import <glib.h>
 #import <gst/rtsp-server/rtsp-server.h>
 
@@ -244,7 +246,10 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 		break;
 	}
 	case GST_MESSAGE_EOS: {
-		VMPInfo(@"End of stream for channel %@", channel);
+		VMPError(@"End of stream for channel %@", channel);
+
+		// We should always try to restart the pipeline
+		[mgr restart];
 		break;
 	}
 	default:
