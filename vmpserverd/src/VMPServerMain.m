@@ -204,6 +204,7 @@
 
 			response = [HKHTTPResponse responseWithStatus:200];
 			[response setHeaders:headers];
+			[response setCheckIfEndpointExists:YES];
 
 			return response;
 		}
