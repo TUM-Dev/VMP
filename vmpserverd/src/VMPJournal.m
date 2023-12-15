@@ -20,53 +20,88 @@
 #define ANSI_COLOR_MAGENTA "\x1b[1;35m" // Bold Magenta
 #define ANSI_COLOR_RESET "\x1b[0m"
 
-#define LOG_PREAMBLE                                                                                                   \
-	va_list args;                                                                                                      \
-	va_start(args, format);                                                                                            \
-	NSString *message = [[NSString alloc] initWithFormat:format arguments:args];                                       \
+#define LOG_PREAMBLE                                                                               \
+	va_list args;                                                                                  \
+	va_start(args, format);                                                                        \
+	NSString *message = [[NSString alloc] initWithFormat:format arguments:args];                   \
 	va_end(args);
 
-#define SEND_LOG(prefix, color, type, message)                                                                         \
-	fprintf(stderr, "[ %s%s\x1b[0m ] %s\n", color, prefix, [message UTF8String]);                                      \
-	[[VMPJournal defaultJournal] message:message withPriority:type];
+#define SEND_LOG(prefix, color, type, msg, f)                                                      \
+	do {                                                                                           \
+		NSString *date;                                                                            \
+		date = [[NSDate date] description];                                                        \
+		fprintf(stderr, "%s [ %s%s\x1b[0m ] %s\n", [date UTF8String], color, prefix,               \
+				[msg UTF8String]);                                                                 \
+		[[VMPJournal defaultJournal] message:msg withPriority:type fields:f];                      \
+	} while (0);
 
 void VMPDebug(NSString *format, ...) {
 #ifdef DEBUG
 	LOG_PREAMBLE
 
 	NSString *date;
-
 	date = [[NSDate date] description];
 
-	fprintf(stderr, "%s [ %s%s\x1b[0m ]  \x1b[2m%s\x1b[0m\n", [date UTF8String], ANSI_COLOR_CYAN, "DEBUG", [message UTF8String]);
-	[[VMPJournal defaultJournal] message:message withPriority:kVMPJournalTypeDebug];
+	fprintf(stderr, "%s [ %s%s\x1b[0m ]  \x1b[2m%s\x1b[0m\n", [date UTF8String], ANSI_COLOR_CYAN,
+			"DEBUG", [message UTF8String]);
+	[[VMPJournal defaultJournal] message:message withPriority:kVMPJournalTypeDebug fields:nil];
 #endif
 }
 
 void VMPInfo(NSString *format, ...) {
 	LOG_PREAMBLE
-	SEND_LOG("INFO", ANSI_COLOR_GREEN, kVMPJournalTypeInfo, message);
+	SEND_LOG("INFO", ANSI_COLOR_GREEN, kVMPJournalTypeInfo, message, nil);
 }
 
 void VMPWarn(NSString *format, ...) {
 	LOG_PREAMBLE
-	SEND_LOG("WARN", ANSI_COLOR_YELLOW, kVMPJournalTypeWarning, message);
+	SEND_LOG("WARN", ANSI_COLOR_YELLOW, kVMPJournalTypeWarning, message, nil);
 }
 
 void VMPError(NSString *format, ...) {
 	LOG_PREAMBLE
-	SEND_LOG("ERROR", ANSI_COLOR_RED, kVMPJournalTypeError, message);
+	SEND_LOG("ERROR", ANSI_COLOR_RED, kVMPJournalTypeError, message, nil);
 }
 
 void VMPCritical(NSString *format, ...) {
 	LOG_PREAMBLE
-	SEND_LOG("CRITICAL", ANSI_COLOR_MAGENTA, kVMPJournalTypeCritical, message);
+	SEND_LOG("CRITICAL", ANSI_COLOR_MAGENTA, kVMPJournalTypeCritical, message, nil);
+}
+
+void VMPGStreamerLoggingBridge(GstDebugCategory *category, GstDebugLevel level, const gchar *file,
+							   const gchar *function, gint line, GObject *object,
+							   GstDebugMessage *message, gpointer user_data) {
+	if (level < GST_LEVEL_WARNING) {
+		return;
+	}
+
+	NSString *wrappedMessage;
+	NSDictionary *f = @{
+		@"GST_FILE" : [NSString stringWithUTF8String:file],
+		@"GST_FUNCTION" : [NSString stringWithUTF8String:function],
+		@"GST_LINE" : [NSString stringWithFormat:@"%d", line]
+	};
+
+	switch (level) {
+	case GST_LEVEL_ERROR:
+		wrappedMessage = [NSString stringWithUTF8String:gst_debug_message_get(message)];
+		SEND_LOG("ERROR (GST)", ANSI_COLOR_RED, kVMPJournalTypeError, wrappedMessage, f);
+		break;
+	case GST_LEVEL_WARNING:
+		wrappedMessage = [NSString stringWithUTF8String:gst_debug_message_get(message)];
+		SEND_LOG("WARN (GST)", ANSI_COLOR_YELLOW, kVMPJournalTypeError, wrappedMessage, f);
+		break;
+	default:
+		break;
+	}
 }
 
 @interface VMPJournal ()
 @property (nonatomic, readwrite) NSString *subsystem;
 @end
 
+// Helper category to convert an array of NSStrings to an array of iovecs
+// required by sd_journal_sendv
 @interface NSMutableArray (VMPJournal)
 - (const struct iovec *)UTF8StringIOVec;
 @end
@@ -87,8 +122,11 @@ void VMPCritical(NSString *format, ...) {
 }
 @end
 
-@implementation VMPJournal
+@implementation VMPJournal {
+	NSMutableArray<NSString *> *_defaultFields;
+}
 
+// defaultJournal is a singleton
 static VMPJournal *defaultJournal = nil;
 
 + (VMPJournal *)defaultJournal {
@@ -106,6 +144,7 @@ static VMPJournal *defaultJournal = nil;
 	self = [super init];
 	if (self) {
 		_subsystem = subsystem;
+		_defaultFields = [self _createJournalFields];
 	}
 	return self;
 }
@@ -127,13 +166,21 @@ static VMPJournal *defaultJournal = nil;
 	return fields;
 }
 
-- (void)message:(NSString *)message withPriority:(VMPJournalType)priority {
-	NSMutableArray<NSString *> *fields = [self _createJournalFields];
+- (void)message:(NSString *)message
+	withPriority:(VMPJournalType)priority
+		  fields:(NSDictionary<NSString *, NSString *> *)fields {
+	NSMutableArray<NSString *> *f = [NSMutableArray arrayWithArray:_defaultFields];
 
-	[fields addObject:[NSString stringWithFormat:@"PRIORITY=%d", priority]];
-	[fields addObject:[NSString stringWithFormat:@"MESSAGE=%@", message]];
+	if (fields != nil) {
+		for (NSString *key in fields) {
+			[f addObject:[NSString stringWithFormat:@"%@=%@", key, [fields objectForKey:key]]];
+		}
+	}
 
-	const struct iovec *vec = [fields UTF8StringIOVec];
+	[f addObject:[NSString stringWithFormat:@"PRIORITY=%d", priority]];
+	[f addObject:[NSString stringWithFormat:@"MESSAGE=%@", message]];
+
+	const struct iovec *vec = [f UTF8StringIOVec];
 	if (vec == NULL) {
 		return;
 	}
@@ -141,8 +188,9 @@ static VMPJournal *defaultJournal = nil;
 	sd_journal_sendv(vec, [fields count]);
 	free((void *) vec);
 }
+
 - (void)error:(NSError *)error withPriority:(VMPJournalType)priority {
-	[self message:[error description] withPriority:priority];
+	[self message:[error description] withPriority:priority fields:nil];
 }
 
 @end

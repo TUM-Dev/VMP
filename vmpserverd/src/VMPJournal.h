@@ -6,11 +6,18 @@
 
 #import <Foundation/Foundation.h>
 
+// GStreamer logging
+#include <gst/gst.h>
+
 void VMPDebug(NSString *format, ...);
 void VMPInfo(NSString *format, ...);
 void VMPWarn(NSString *format, ...);
 void VMPError(NSString *format, ...);
 void VMPCritical(NSString *format, ...);
+
+void VMPGStreamerLoggingBridge(GstDebugCategory *category, GstDebugLevel level, const gchar *file,
+							   const gchar *function, gint line, GObject *object,
+							   GstDebugMessage *message, gpointer user_data);
 
 #define VMP_ASSERT(condition, string, ...)                                                         \
 	if (!(condition)) {                                                                            \
@@ -85,7 +92,17 @@ typedef enum VMPJournalType {
 
 - (instancetype)initWithSubsystem:(NSString *)subsystem;
 
-- (void)message:(NSString *)message withPriority:(VMPJournalType)priority;
+/**
+	@brief Log a message to the journal
+
+	@param message The message to log
+	@param priority The priority of the message
+	@param fields Additional fields to add to the journal entry, or nil
+*/
+- (void)message:(NSString *)message
+	withPriority:(VMPJournalType)priority
+		  fields:(NSDictionary<NSString *, NSString *> *)fields;
+
 - (void)error:(NSError *)error withPriority:(VMPJournalType)priority;
 
 @end
