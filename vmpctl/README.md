@@ -1,1 +1,1 @@
-# VMPControl -- A simple ncurses command-line interface to control a VMP server
+# VMPControl -- A simple command-line interface to control a VMP server
