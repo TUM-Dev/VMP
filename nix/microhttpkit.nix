@@ -7,8 +7,8 @@ gnustep.stdenv.mkDerivation rec {
   src = fetchFromGitHub {
     owner = "hmelder";
     repo = "MicroHTTPKit";
-    rev = "v0.2.0-rc";
-    hash = "sha256-Y2OcGydAoS72D9EFLn8pAELU9vDcf+BgqbRzK4J9J9A=";
+    rev = "v0.2.1-rc";
+    hash = "sha256-a8CCt5xsb0HxiAvqeZGpKNmhTHqKmghGqwdzlWJx/TE=";
   };
 
   nativeBuildInputs = [ gnustep.make meson ninja clang pkg-config ];
