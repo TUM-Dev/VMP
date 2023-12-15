@@ -6,4 +6,4 @@
 
 #import "VMPErrors.h"
 
-NSString *const VMPErrorDomain = @"com.hugomelder.vmp-server";
+NSString *const VMPErrorDomain = @"com.hugomelder.vmpserverd";
