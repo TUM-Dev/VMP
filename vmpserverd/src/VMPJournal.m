@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <Foundation/NSDictionary.h>
 #import <systemd/sd-journal.h>
 
 #import "VMPJournal.h"
@@ -32,7 +33,12 @@
 void VMPDebug(NSString *format, ...) {
 #ifdef DEBUG
 	LOG_PREAMBLE
-	fprintf(stderr, "[ %s%s\x1b[0m ]  \x1b[2m%s\x1b[0m\n", ANSI_COLOR_CYAN, "DEBUG", [message UTF8String]);
+
+	NSString *date;
+
+	date = [[NSDate date] description];
+
+	fprintf(stderr, "%s [ %s%s\x1b[0m ]  \x1b[2m%s\x1b[0m\n", [date UTF8String], ANSI_COLOR_CYAN, "DEBUG", [message UTF8String]);
 	[[VMPJournal defaultJournal] message:message withPriority:kVMPJournalTypeDebug];
 #endif
 }
