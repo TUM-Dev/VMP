@@ -2,13 +2,13 @@
 
 gnustep.stdenv.mkDerivation rec {
   pname = "microhttpkit";
-  version = "0.1.0";
+  version = "0.2.0";
 
   src = fetchFromGitHub {
     owner = "hmelder";
     repo = "MicroHTTPKit";
-    rev = "main";
-    hash = "sha256-FuwRyX7mrSYw+an0WaO7hgOmN05dXpWhTVirKf9Ektc=";
+    rev = "v0.2.0-rc";
+    hash = "sha256-Y2OcGydAoS72D9EFLn8pAELU9vDcf+BgqbRzK4J9J9A=";
   };
 
   nativeBuildInputs = [ gnustep.make meson ninja clang pkg-config ];
