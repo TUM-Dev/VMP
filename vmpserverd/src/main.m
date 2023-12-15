@@ -35,6 +35,12 @@ int main(int argc, char *argv[]) {
 	// Initialize the GStreamer library
 	gst_init(&argc, &argv);
 
+	// Remove the default logging function and add our own
+	gst_debug_remove_log_function(gst_debug_log_default);
+
+	// Tap into the GStreamer logging system
+	gst_debug_add_log_function(VMPGStreamerLoggingBridge, NULL, NULL);
+
 	@autoreleasepool {
 		NSRunLoop *runLoop;
 		NSString *selectedPath;
