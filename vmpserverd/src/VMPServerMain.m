@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <MicroHTTPKit/HKHTTPConstants.h>
 #import <MicroHTTPKit/MicroHTTPKit.h>
 #import <glib.h>
 
@@ -190,6 +191,25 @@
 	router = [_httpServer router];
 
 	// FIXME: Implement authorization via middleware
+	[router setMiddleware:^HKHTTPResponse *(HKHTTPRequest *request) {
+		// Setup a very basic CORS handler
+		if ([request method] == HKHTTPMethodOptions) {
+			HKHTTPResponse *response;
+			NSDictionary *headers = @{
+				@"Access-Control-Allow-Origin" : @"*",
+				@"Access-Control-Allow-Methods" : @"GET, OPTIONS",
+				@"Access-Control-Allow-Headers" : @"Authorization, Content-Type",
+				@"Access-Control-Max-Age" : @"3600",
+			};
+
+			response = [HKHTTPResponse responseWithStatus:200];
+			[response setHeaders:headers];
+
+			return response;
+		}
+
+		return nil;
+	}];
 
 	// GET /api/v1/status
 	statusRoute = [HKRoute routeWithPath:@"/api/v1/status"
