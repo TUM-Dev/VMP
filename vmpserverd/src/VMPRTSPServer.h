@@ -12,29 +12,27 @@
 
 #import <gst/rtsp-server/rtsp-server.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 /**
-	@brief RTSP server class
-
-	This class is responsible for setting up the RTSP server, and
-	creating the pipeline channels.
-
-	Currently, this class is a wrapper around the GStreamer RTSP server, and additionally
-	initialises the ingress pipelines.
-*/
+ * @brief RTSP server class
+ *
+ * This class is responsible for setting up the RTSP server, and
+ * creating the pipeline channels.
+ *
+ * Currently, this class is a wrapper around the GStreamer RTSP server, and additionally
+ * initialises the pipeline managers for all registered channels.
+ */
 @interface VMPRTSPServer : NSObject <VMPPipelineManagerDelegate>
 
 /**
-	@brief Server configuration for configuring RTSP server
-
-	@note This property is readonly, and can only be set during initialisation.
-*/
+ * @brief Server configuration for configuring RTSP server
+ */
 @property (readonly) VMPConfigModel *configuration;
 
 /**
-	@brief The current pipeline profile
-
-	@note This property is readonly, and is automatically set during initialisation.
-*/
+ * @brief The current pipeline profile
+ */
 @property (readonly) VMPProfileModel *currentProfile;
 
 + (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration
@@ -42,9 +40,9 @@
 - (instancetype)initWithConfiguration:(VMPConfigModel *)configuration
 							  profile:(VMPProfileModel *)profile;
 
-- (VMPPipelineManager *)pipelineManagerForChannel:(NSString *)channel;
+- (nullable VMPPipelineManager *)pipelineManagerForChannel:(NSString *)channel;
 
-- (NSData *)dotGraphForMountPointName:(NSString *)name;
+- (nullable NSData *)dotGraphForMountPointName:(NSString *)name;
 
 - (NSArray *)channelInfo;
 
@@ -63,3 +61,5 @@
 - (void)stop;
 
 @end
+
+NS_ASSUME_NONNULL_END
