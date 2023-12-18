@@ -8,17 +8,19 @@
 
 #import "VMPProfileModel.h"
 
+NS_ASSUME_NONNULL_BEGIN
+
 /**
-	@brief Class for managing available profiles
-
-	Profiles are plist files that specify GStreamer
-	pipeline configurations for mountpoints and
-	video channels. They can be optimised for
-	specific platforms, and are scored upon start-up
-	to find the best-matching profile.
-
-	@see VMPProfile
-*/
+ * @brief Class for managing available profiles
+ *
+ * Profiles are property lists that specify GStreamer
+ * pipeline configurations for mountpoints and
+ * channels. They can be optimised for
+ * specific platforms, and are scored upon start-up
+ * to find the best-matching profile.
+ *
+ * @see VMPProfileModel
+ */
 @interface VMPProfileManager : NSObject
 
 @property (readonly) NSString *runtimePlatform;
@@ -26,19 +28,47 @@
 @property (strong) NSArray<VMPProfileModel *> *availableProfiles;
 
 /**
-	@brief Autodetects the runtimePlatform during initialisation
+ * @brief Profile manager convenience initialiser with platform auto-detection
+ *
+ * @param path The path to the profile directory
+ * @param error An error pointer
+ *
+ * This convenience initialiser autodetects the runtimePlatform during
+ * initialisation, using a very simple scoring system.
+ *
+ * The profile directory is the directories of all profile property lists.
+ *
+ * @returns a profile manager if no configuration error occurred. Otherwise nil
+ * with a populated error.
+ */
++ (nullable instancetype)managerWithPath:(NSString *)path error:(NSError **)error;
 
-	@param path The path to the profile directory
-	@param error An error pointer
-*/
-+ (instancetype)managerWithPath:(NSString *)path error:(NSError **)error;
+/**
+ * @brief Profile manager convenience initialiser without auto-detection
+ *
+ * @param path The path to the profile directory
+ * @param platform The runtime platform (manually specified)
+ * @param error An error pointer
+ *
+ * @returns a profile manager, or nil
+ */
++ (nullable instancetype)managerWithPath:(NSString *)path
+						 runtimePlatform:(NSString *)runtimePlatform
+								   error:(NSError **)error;
 
-+ (instancetype)managerWithPath:(NSString *)path
-				runtimePlatform:(NSString *)platform
-						  error:(NSError **)error;
-
-- (instancetype)initWithPath:(NSString *)path
-			 runtimePlatform:(NSString *)platform
-					   error:(NSError **)error;
+/*
+ * @brief Profile manager initialiser without auto-detection
+ *
+ * @param path The path to the profile directory
+ * @param platform The runtime platform (manually specified)
+ * @param error An error pointer
+ *
+ * @returns an initialised profile manager, or nil
+ */
+- (nullable instancetype)initWithPath:(NSString *)path
+					  runtimePlatform:(NSString *)runtimePlatform
+								error:(NSError **)error;
 
 @end
+
+NS_ASSUME_NONNULL_END
