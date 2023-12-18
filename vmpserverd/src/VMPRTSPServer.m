@@ -1,11 +1,9 @@
-/* vmp-server - A virtual multimedia processor
+/* vmpserverd - A virtual multimedia processor
  * Copyright (C) 2023 Hugo Melder
  *
  * SPDX-License-Identifier: MIT
  */
 
-#include <Foundation/NSDate.h>
-#include <Foundation/NSRunLoop.h>
 #import <glib.h>
 #import <gst/rtsp-server/rtsp-server.h>
 
@@ -57,7 +55,7 @@
 	if (self) {
 		_server = server;
 		_mountpointName = name;
-		_state = kVMPStateIdle;
+		_state = kVMPStateCreated;
 	}
 	return self;
 }
@@ -248,8 +246,7 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 	case GST_MESSAGE_EOS: {
 		VMPError(@"End of stream for channel %@", channel);
 
-		// We should always try to restart the pipeline
-		[mgr restart];
+		// TODO: We should always try to restart the pipeline
 		break;
 	}
 	default:

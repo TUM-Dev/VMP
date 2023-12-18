@@ -4,34 +4,28 @@
  * SPDX-License-Identifier: MIT
  */
 
-#import "VMPPipelineManager.h"
+#import <glib.h>
+
 #import "VMPErrors.h"
 #import "VMPJournal.h"
-#include "gst/gstdebugutils.h"
-#include "gst/gstelement.h"
-#include <Foundation/NSDate.h>
-#include <Foundation/NSDictionary.h>
-#include <Foundation/NSRunLoop.h>
+#import "VMPPipelineManager.h"
 
-#include <glib.h>
-
-NSString *const kVMPStateIdle = @"idle";
-NSString *const kVMPStateDeviceConnected = @"device_connected";
-NSString *const kVMPStateDeviceDisconnected = @"device_disconnected";
-NSString *const kVMPStateDeviceError = @"device_error";
+NSString *const kVMPStateCreated = @"created";
 NSString *const kVMPStatePlaying = @"playing";
-NSString *const kVMPStateError = @"error";
+NSString *const kVMPStateEOS = @"eos";
 
 NSString *const kVMPStatisticsNumberOfRestarts = @"numberOfRestarts";
 
-#define PRINT_ERROR(error)                                                                         \
-	if (error != nil) {                                                                            \
-		VMPError(@"Error: %@", error);                                                             \
-	}
-
-// We bridge the GStreamer bus callback mechanism with our VMPPipelineManagerDelegate
+/* We bridge the GStreamer bus callback mechanism with our VMPPipelineManagerDelegate.
+ *
+ * In order to do this, we need to annotate the cast from a void pointer to an
+ * Objective-C object. This is mandatory, as we compile with ARC support.
+ *
+ * The object is bridged without retaining it, as the lifetime of the pipeline manager
+ * is at least as long as the lifetime of the GStreamer pipeline.
+ */
 static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
-	// Cast back to an Objective-C object
+	// Cast back to an Objective-C object without retaining it
 	__unsafe_unretained VMPPipelineManager *localManager = (__bridge id) mgr;
 
 	if (localManager != nil) {
@@ -41,14 +35,16 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 		}
 	}
 
+	// We want to be notified for future bus events as well
 	return TRUE;
 }
 
-// Redefine properties for readwrite access
+// A category for (re)defining properties and declaring classes for private use
 @interface VMPPipelineManager ()
 
 @property (nonatomic, readwrite) NSString *state;
-@property (nonatomic, readwrite) GstElement *pipeline;
+@property (nonatomic, readwrite) NSString *channel;
+@property (nonatomic) GstElement *pipeline;
 @property (nonatomic, readwrite) NSMutableDictionary *statistics;
 
 // Pipeline management
@@ -87,7 +83,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 		_channel = channel;
 		_launchArgs = args;
 		_delegate = delegate;
-		_state = kVMPStateIdle;
+		_state = kVMPStateCreated;
 		_pipeline = NULL;
 		_pipelineCreated = NO;
 		_statistics = [NSMutableDictionary dictionaryWithDictionary:initialStatistics];
@@ -113,6 +109,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 		return nil;
 	}
 
+	// Transfer responsiblity for freeing buffer to object
 	data = [NSData dataWithBytesNoCopy:dot length:strlen(dot) freeWhenDone:YES];
 
 	return data;
@@ -123,8 +120,8 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 
 	// Do nothing if the pipeline is already created
 	if (_pipelineCreated) {
-		VMPError(@"Pipeline for channel %@ already created", _channel);
-		return NO;
+		VMPInfo(@"Trying to start pipeline for channel %@, but it was already created", _channel);
+		return YES;
 	}
 
 	// Update restart statistics
@@ -133,10 +130,13 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 
 	// Start pipeline immediately
 	if (![self _createPipelineWithError:&error]) {
-		PRINT_ERROR(error);
+		if (error != nil) {
+			VMPError(@"%@", error);
+		}
+
 		if (error != nil && [error code] == VMPErrorCodeGStreamerParseError) {
-			[self setState:kVMPStateDeviceError];
-			[[self delegate] onStateChanged:kVMPStateDeviceError manager:self];
+			[self setState:kVMPStateEOS];
+			[[self delegate] onStateChanged:kVMPStateEOS manager:self];
 		}
 		return NO;
 	}
@@ -145,24 +145,23 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 }
 
 /* Create a pipeline and return the status.
-   This method should only be called once during the lifetime of the object.
-   Subsequent calls will return NO.
-*/
+ * Subsequent calls will return YES.
+ */
 - (BOOL)_createPipelineWithError:(NSError **)error {
 	GstBus *bus;
 	GstStateChangeReturn ret;
 	GError *gerror = NULL;
 
 	if (_pipelineCreated) {
-		return NO;
+		return YES;
 	}
-
 	_pipelineCreated = YES;
 
-	// Transfer: Full
+	// Transfer: Full. Deallocation (decreasing reference count) in dealloc:
 	_pipeline = gst_parse_launch([_launchArgs UTF8String], &gerror);
 	if (_pipeline == NULL) {
 		VMPError(@"gst_parse_launch returned NULL while parsing launch args: %@", _launchArgs);
+
 		if (gerror != NULL) {
 			VMPError(@"GStreamer error: %s", gerror->message);
 
@@ -240,31 +239,8 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 		_pipeline = NULL;
 		_pipelineCreated = NO;
 
-		[self setState:kVMPStateIdle];
+		[self setState:kVMPStateCreated];
 	}
-}
-
-// TODO: We should use a block with performBlock: instead of a trampoline method
-- (void)_startFromRunloop {
-	if (![self start]) {
-		// Schedule a new pipeline restart
-		[self restart];
-	}
-}
-
-- (void)restart {
-	NSRunLoop *runloop;
-	NSTimeInterval delay;
-
-	VMPInfo(@"Schedule pipeline restart for channel '%@'", _channel);
-
-	[self stop];
-
-	runloop = [NSRunLoop currentRunLoop];
-	delay = 1.0;
-
-	// Schedule pipeline restart
-	[self performSelector:@selector(_startFromRunloop) withObject:nil afterDelay:delay];
 }
 
 - (NSString *)description {
