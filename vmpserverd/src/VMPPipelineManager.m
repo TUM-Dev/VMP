@@ -264,7 +264,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 	delay = 1.0;
 
 	// Schedule pipeline restart
-	[runloop performSelector:@selector(_startFromRunloop) withObject:self afterDelay:delay];
+	[self performSelector:@selector(_startFromRunloop) withObject:nil afterDelay:delay];
 }
 
 - (NSString *)description {
