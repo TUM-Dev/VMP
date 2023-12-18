@@ -151,7 +151,7 @@ extern NSString *const kVMPStatisticsNumberOfRestarts;
  * The third argument is a delegate for non-optional and optional events.
  * @See VMPPipelineManagerDelegate
  *
- * @returns a pipeline manager initialized with the given channel
+ * @returns a pipeline manager initialised with the given channel
  */
 - (instancetype)initWithLaunchArgs:(NSString *)args
 						   channel:(NSString *)channel
