@@ -14,4 +14,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+// Methods exposed for testing
+@interface ICALParser (Testing)
+
+- (NSArray<NSData *> *)_unfoldData:(NSData *)data;
+
+@end
+
 NS_ASSUME_NONNULL_END
