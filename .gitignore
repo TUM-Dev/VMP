@@ -174,3 +174,7 @@ vmp-http-spec/vmp-http-spec.json
 
 # Config
 config.plist
+
+# clangd
+compile_commands.json
+.clangd
