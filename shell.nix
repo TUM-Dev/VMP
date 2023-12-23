@@ -53,6 +53,8 @@ pkgs.mkShell {
     # MicroHTTPKit
     pkgs.microhttpkit
 
+    pkgs.xctest
+
   ];
 
   shellHook = ''
