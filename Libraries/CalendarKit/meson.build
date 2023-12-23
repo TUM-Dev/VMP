@@ -75,3 +75,5 @@ pkg.generate(libraries : calendarkit_lib,
              filebase : 'CalendarKit',
              description : 'An iCalendar RFC 5545 library for Objective-C',
 )
+
+subdir('Tests')
