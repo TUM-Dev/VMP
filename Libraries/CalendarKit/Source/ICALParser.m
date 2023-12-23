@@ -20,7 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * See https://tools.ietf.org/html/rfc5545#section-3.1
  */
-- (NSArray<NSData *> *)_unfoldData:(NSData *)data {
++ (NSArray<NSData *> *)_unfoldData:(NSData *)data {
 	NSMutableArray<NSData *> *lines;
 	NSMutableData *unfoldedData;
 	const char *bytes;
@@ -52,6 +52,11 @@ NS_ASSUME_NONNULL_BEGIN
 			[unfoldedData appendBytes:&bytes[i] length:1];
 			i++;
 		}
+	}
+
+	// Add the last line
+	if ([unfoldedData length]) {
+		[lines addObject:[unfoldedData copy]];
 	}
 
 	return lines;
