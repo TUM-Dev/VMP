@@ -41,6 +41,7 @@ source = [
   'Source/ICALEvent.m',
   'Source/ICALTimeZone.m',
   'Source/ICALParser.m',
+  'Source/ICALError.m',
 ]
 
 headers = [
@@ -49,6 +50,7 @@ headers = [
   'CalendarKit/ICALCalendar.h',
   'CalendarKit/ICALEvent.h',
   'CalendarKit/ICALTimeZone.h',
+  'CalendarKit/ICALError.h',
 ]
 
 include_dirs = include_directories(
