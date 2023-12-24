@@ -15,6 +15,8 @@ const char *PRODID = "PRODID:-//CalendarKit//Test//EN";
 const char *CATEGORIES = "CATEGORIES:APPOINTMENT,EDUCATION,SOME TEXT";
 const char *DTSTART = "DTSTART;TZID=America/New_York:20130802T103400";
 const char *QUOTED_PARAM_VALUE = "ATTENDEE;CN=\"Doe, John\":mailto:john.doe@example.com";
+const char *MULTIPLE_PARAM_VALUES =
+	"ATTENDEE;ROLE=REQ-PARTICIPANT,CHAIR;RSVP=TRUE:mailto:example@example.com";
 
 const char *INVALID_SUMMARY = "SUMMARY;LANGUAGE=de";
 const char *INCORRECT_QUOTED_PARAM_VALUE = "ATTENDEE;CN=\"Doe,\" John\":mailto:doe@example.com";
@@ -24,6 +26,20 @@ const char *INCORRECT_QUOTED_PARAM_VALUE_2 = "ATTENDEE;CN=\"Doe,\"\" John\":mail
 @end
 
 @implementation TokenizationTests
+
+- (void)testEmpty {
+	NSData *inputEmpty;
+	NSError *error;
+	ICALTokenizer *tokenizer;
+
+	inputEmpty = [NSData dataWithBytes:"" length:0];
+	tokenizer = [[ICALTokenizer alloc] initWithData:inputEmpty line:1];
+
+	XCTAssertEqual([tokenizer nextTokenWithError:&error], ICALTokenTypeError,
+				   @"Tokenizer returns error");
+	XCTAssertNotNil(error, @"Error occurred");
+	XCTAssertEqual([error code], ICALParserUnexpectedEndOfLineError, @"Error code is correct");
+}
 
 - (void)testBEGIN {
 	NSData *inputBegin;
@@ -157,6 +173,46 @@ const char *INCORRECT_QUOTED_PARAM_VALUE_2 = "ATTENDEE;CN=\"Doe,\"\" John\":mail
 	XCTAssertEqual([tokenizer nextTokenWithError:&error], ICALTokenTypeValue,
 				   @"Fourth token is a value");
 	XCTAssertEqualObjects([tokenizer stringValue], @"mailto:john.doe@example.com");
+}
+
+- (void)testMultipleParamValues {
+	NSData *inputMultipleParamValues;
+	NSError *error;
+	ICALTokenizer *tokenizer;
+
+	inputMultipleParamValues = [NSData dataWithBytes:MULTIPLE_PARAM_VALUES
+											  length:strlen(MULTIPLE_PARAM_VALUES)];
+	tokenizer = [[ICALTokenizer alloc] initWithData:inputMultipleParamValues line:1];
+
+	XCTAssertEqual([tokenizer nextTokenWithError:&error], ICALTokenTypeProperty,
+				   @"First token is a property");
+	XCTAssertEqualObjects([tokenizer stringValue], @"ATTENDEE", @"First token is ATTENDEE");
+
+	XCTAssertEqual([tokenizer nextTokenWithError:&error], ICALTokenTypeParameter,
+				   @"Second token is a parameter");
+	XCTAssertEqualObjects([tokenizer stringValue], @"ROLE", @"Second token is ROLE");
+
+	XCTAssertEqual([tokenizer nextTokenWithError:&error], ICALTokenTypeParameterValue,
+				   @"Third token is a parameter value");
+	XCTAssertEqualObjects([tokenizer stringValue], @"REQ-PARTICIPANT",
+						  @"Third token is REQ-PARTICIPANT");
+
+	XCTAssertEqual([tokenizer nextTokenWithError:&error], ICALTokenTypeParameterValue,
+				   @"fourth token is a parameter value");
+	XCTAssertEqualObjects([tokenizer stringValue], @"CHAIR", @"Fourth token is CHAIR");
+
+	XCTAssertEqual([tokenizer nextTokenWithError:&error], ICALTokenTypeParameter,
+				   @"Fifth token is a parameter");
+	XCTAssertEqualObjects([tokenizer stringValue], @"RSVP", @"Fifth token is RSVP");
+
+	XCTAssertEqual([tokenizer nextTokenWithError:&error], ICALTokenTypeParameterValue,
+				   @"Sixth token is a parameter value");
+	XCTAssertEqualObjects([tokenizer stringValue], @"TRUE", @"Sixth token is TRUE");
+
+	XCTAssertEqual([tokenizer nextTokenWithError:&error], ICALTokenTypeValue,
+				   @"Seventh token is a value");
+	XCTAssertEqualObjects([tokenizer stringValue], @"mailto:example@example.com",
+						  @"Seventh token is mailto:example@example.com");
 }
 
 - (void)testIncorrectQuotedParameterValue {
