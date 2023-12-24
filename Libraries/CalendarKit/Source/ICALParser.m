@@ -3,37 +3,73 @@
  *
  * SPDX-License-Identifier: MIT
  */
+
+#include "Foundation/NSObjCRuntime.h"
+#import <CalendarKit/ICALError.h>
 #import <stdint.h>
 
 #import "ICALParser.h"
 
+#define SET_ERROR(err_ptr, err_code, err_description, err_line, err_position)                      \
+	if (err_ptr) {                                                                                 \
+		*err_ptr = [NSError errorWithDomain:ICALErrorDomain                                        \
+									   code:(err_code) userInfo:@{                                 \
+										   NSLocalizedDescriptionKey : (err_description),          \
+										   ICALParserPositionKey : @((err_position)),              \
+										   ICALParserLineKey : @((err_line))                       \
+									   }];                                                         \
+	}
 NS_ASSUME_NONNULL_BEGIN
 
 @implementation ICALTokenizer {
 	NSData *_data;
+	NSUInteger _line;
 	NSUInteger _position;
+	NSUInteger _valuePosition;
 	NSUInteger _lastPosition;
 	BOOL _inQuotedString;
 	ICALTokenType _state;
+	ICALTokenType _prevState;
 }
 
-- (instancetype)initWithData:(NSData *)data {
+- (instancetype)initWithData:(NSData *)data line:(NSUInteger)line {
 	self = [super init];
 
 	if (self) {
 		_data = data;
+		_line = line;
 		_position = 0;
+		_valuePosition = 0;
 		_lastPosition = 0;
 		_inQuotedString = NO;
-		_state = ICALTokenTypeNone;
+		_state = ICALTokenTypeProperty;
+		_prevState = ICALTokenTypeNone;
 	}
 
 	return self;
 }
 
-- (ICALTokenType)nextToken {
-	if (_state == ICALTokenTypeValue) {
-		return ICALTokenTypeNone;
+/*
+ * State machine without transition to error state:
+ *
+ *                ;     ┌─────────────┐      =
+ *          ┌──────────▶│  parameter  │──────────┐
+ *          │           └─────────────┘          │
+ *          │                  ▲                 │          ,
+ *          │                  │                 │         ┌─┐
+ *   ┌─────────────┐           │ ;               ▼         │ │
+ *   │    none     │           │        ┌─────────────────┐▼ │
+ *   └─────────────┘           └────────│ parameter value │──┘
+ *                                      └─────────────────┘
+ *                                               │
+ *                                               │
+ *                      ┌─────────────┐          │
+ *                      │    value    │◀─────────┘
+ *                      └─────────────┘      :
+ */
+- (ICALTokenType)nextTokenWithError:(NSError **)error {
+	if (_state == ICALTokenTypeNone || _state == ICALTokenTypeError) {
+		return _state;
 	}
 
 	const uint8_t *bytes;
@@ -41,35 +77,85 @@ NS_ASSUME_NONNULL_BEGIN
 
 	bytes = [_data bytes];
 	length = [_data length];
-
 	_lastPosition = _position;
+	BOOL wasQuoted = NO;
+
+	// Handle value token by setting position to end of line
+	if (_state == ICALTokenTypeValue) {
+		_prevState = _state;
+		_state = ICALTokenTypeNone;
+		_position = _valuePosition = length;
+		return ICALTokenTypeValue;
+	}
 
 	while (_position < length) {
 		const uint8_t c = bytes[_position];
-		_position++;
+		// Do not include control characters in the value
+		_valuePosition = _position;
+		_prevState = _state;
+		_position += 1;
 
 		if (_inQuotedString) {
 			if (c == '"') {
 				_inQuotedString = NO;
+				wasQuoted = YES;
+			} else if ((c < 0x20 || c == 0x7F) && c != 0x09) {
+				// Invalid CONTROL chars (%x00-08 / %x0A-1F / %x7F) in quoted string
+				_state = ICALTokenTypeError;
+				SET_ERROR(error, ICALParserControlCharError,
+						  @"Invalid CONTROL character in quoted string", _line, _position);
+				return _state;
 			}
 			continue;
 		}
 
 		switch (c) {
 		case '"':
+			if (wasQuoted) {
+				// Invalid character after quoted string
+				_state = ICALTokenTypeError;
+				SET_ERROR(error, ICALParserQuotedStringError,
+						  @"Cannot start new quoted string after ending one", _line, _position);
+				return _state;
+			}
+
 			_inQuotedString = YES;
+			if (_state == ICALTokenTypeParameterValue) {
+				_state = ICALTokenTypeQuotedParameterValue;
+			}
 			break;
 		case ':': // Transition to value state
-			_state = ICALTokenTypeValue;
-			return ICALTokenTypeProperty;
-		case ';': // Parameter seperator. Transition to parameter state
-			_state = ICALTokenTypeParameter;
-			return ICALTokenTypeParameter;
-		case ',': // Parameter Value seperator. Stay until transition to value state
-			if (_state == ICALTokenTypeParameterValue) {
-				return ICALTokenTypeParameterValue;
+				  // Check if transition is valid
+			if (_prevState == ICALTokenTypeParameterValue
+				|| _prevState == ICALTokenTypeQuotedParameterValue
+				|| _prevState == ICALTokenTypeProperty) {
+				_state = ICALTokenTypeValue;
+				return _prevState;
 			}
-			return ICALTokenTypeNone;
+			// Invalid transition to value state
+			_state = ICALTokenTypeError;
+			SET_ERROR(error, ICALParserUnexpectedPropetyValueSeperatorError,
+					  @"Unexpected property value seperator", _line, _position);
+			return _state;
+		case ';': // Parameter seperator. Transition to parameter state
+			if (_prevState == ICALTokenTypeProperty || _prevState == ICALTokenTypeParameterValue
+				|| _prevState == ICALTokenTypeQuotedParameterValue) {
+				_state = ICALTokenTypeParameter;
+				return _prevState;
+			}
+			// Invalid transition to parameter state
+			_state = ICALTokenTypeError;
+			SET_ERROR(error, ICALParserUnexpectedParameterError, @"Unexpected parameter seperator",
+					  _line, _position);
+			return _state;
+		case ',': // Parameter Value seperator. Stay until transition to value state
+			if (_state == ICALTokenTypeParameterValue
+				|| _state == ICALTokenTypeQuotedParameterValue) {
+				return _state;
+			}
+			SET_ERROR(error, ICALParserUnexpectedParameterValueError,
+					  @"Unexpected parameter value seperator", _line, _position);
+			return ICALTokenTypeError;
 		case '=': // Parameter name/value seperator. Transition to parameter value state
 			if (_state == ICALTokenTypeParameter) {
 				_state = ICALTokenTypeParameterValue;
@@ -78,20 +164,52 @@ NS_ASSUME_NONNULL_BEGIN
 
 			// Ignore if not in parameter state
 			continue;
+		default:
+			/*
+			 * Check for invalid CONTROL chars (%x00-08 / %x0A-1F / %x7F)
+			 */
+			if ((c < 0x20 || c == 0x7F) && c != 0x09) {
+				_state = ICALTokenTypeError;
+				SET_ERROR(error, ICALParserControlCharError,
+						  @"Invalid CONTROL character in unquoted string", _line, _position);
+				return _state;
+			}
+			if (wasQuoted) {
+				// Invalid character after quoted string
+				_state = ICALTokenTypeError;
+				SET_ERROR(error, ICALParserQuotedStringError,
+						  @"Invalid character after quoted string", _line, _position);
+				return _state;
+			}
 		}
 	}
 
-	return ICALTokenTypeNone;
+	SET_ERROR(error, ICALParserUnexpectedEndOfLineError, @"Unexpected end of line", _line,
+			  _valuePosition);
+	return ICALTokenTypeError;
 }
 
 - (NSString *)stringValue {
+	if (_position == 0) {
+		return @"";
+	}
+
 	NSRange range;
 	NSData *subdata;
 	NSString *string;
 
-	range = NSMakeRange(_lastPosition, _position - _lastPosition);
+	range = NSMakeRange(_lastPosition, _valuePosition - _lastPosition);
 	subdata = [_data subdataWithRange:range];
 	string = [[NSString alloc] initWithData:subdata encoding:NSUTF8StringEncoding];
+
+	if (_prevState == ICALTokenTypeQuotedParameterValue) {
+		if ([string length] < 2) {
+			return @"";
+		}
+
+		// Remove quotes
+		string = [string substringWithRange:NSMakeRange(1, [string length] - 2)];
+	}
 
 	return string;
 }

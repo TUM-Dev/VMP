@@ -13,7 +13,9 @@ typedef NS_ENUM(NSUInteger, ICALTokenType) {
 	ICALTokenTypeValue,
 	ICALTokenTypeParameter,
 	ICALTokenTypeParameterValue,
-	ICALTokenTypeProperty
+	ICALTokenTypeQuotedParameterValue,
+	ICALTokenTypeProperty,
+	ICALTokenTypeError
 };
 
 /**
@@ -30,14 +32,14 @@ typedef NS_ENUM(NSUInteger, ICALTokenType) {
  *
  * @return The initialized tokenizer.
  */
-- (instancetype)initWithData:(NSData *)data;
+- (instancetype)initWithData:(NSData *)data line:(NSUInteger)line;
 
 /**
  * @brief Returns the next token type in the content line.
  *
  * @return The next token type in the content line.
  */
-- (ICALTokenType)nextToken;
+- (ICALTokenType)nextTokenWithError:(NSError **)error;
 
 /**
  * @brief Returns the current token in the content line.
