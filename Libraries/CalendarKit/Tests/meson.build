@@ -1,13 +1,29 @@
 xctest_dep = dependency('XCTest', required: true)
 
-lineUnfolding = executable(
-	'lineUnfolding',
-	'lineUnfolding.m',
-	# TODO: Remove this once we remove the use of -Wno-gnu in XCTest
-	objc_args: '-Wno-gnu',
-	dependencies: [xctest_dep],
-	link_with : [calendarkit_lib],
-	include_directories: ['../']
-)
+common_objc_args = '-Wno-gnu'
+common_dependencies = [xctest_dep]
+common_link_with = [calendarkit_lib]
+common_include_dirs = include_directories('../')
+common_resource_dir = join_paths(meson.current_source_dir(), 'Resources')
 
-test('Line Unfolding (Parser) Test', lineUnfolding)
+# Define the first executable
+lineUnfolding = executable(
+    'lineUnfolding',
+    ['lineUnfolding.m', 'main.m'],
+    objc_args: common_objc_args,
+    dependencies: common_dependencies,
+    link_with: common_link_with,
+    include_directories: common_include_dirs
+)
+test('Line Unfolding Parser Test', lineUnfolding)
+
+# Define the second executable
+tokenization = executable(
+    'tokenization',
+    ['tokenization.m', 'main.m'],
+    objc_args: common_objc_args,
+    dependencies: common_dependencies,
+    link_with: common_link_with,
+    include_directories: common_include_dirs
+)
+test('Tokenization Parser Test', tokenization, args: [common_resource_dir])

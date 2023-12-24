@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#import <XCTest/GSXCTestRunner.h>
 #import <XCTest/XCTest.h>
 
 #import "Source/ICALParser.h"
@@ -71,12 +70,3 @@
 }
 
 @end
-
-int main(void) {
-	BOOL res;
-	@autoreleasepool {
-		res = [[GSXCTestRunner sharedRunner] runAll];
-	}
-
-	return res == YES ? 0 : 1;
-}
