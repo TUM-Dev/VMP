@@ -21,6 +21,34 @@
 	}
 NS_ASSUME_NONNULL_BEGIN
 
+/*
+ * Returns YES if the transition from the given state to the given state is valid.
+ */
+static BOOL _isTransitionValid(ICALTokenType from, ICALTokenType to) {
+	switch (from) {
+	case ICALTokenTypeNone:
+		return to == ICALTokenTypeProperty;
+	case ICALTokenTypeProperty:
+		// Property can transition to a parameter (with ';') or a value (with ':')
+		return to == ICALTokenTypeParameter || to == ICALTokenTypeValue;
+	case ICALTokenTypeParameter:
+		// Parameter can transition to a parameter value or quoted parameter value (with '=')
+		return to == ICALTokenTypeParameterValue || to == ICALTokenTypeQuotedParameterValue;
+	case ICALTokenTypeQuotedParameterValue:
+	case ICALTokenTypeParameterValue:
+		// Parameter value can transition to a (quoted) parameter value (with ','), parameter (with
+		// ';'), or a value (with ':')
+		return to == ICALTokenTypeParameterValue || to == ICALTokenTypeQuotedParameterValue
+			   || to == ICALTokenTypeParameter || to == ICALTokenTypeValue;
+
+	case ICALTokenTypeValue:
+		// Reached end-of-line, so no transition is valid
+		return to == ICALTokenTypeNone;
+	default:
+		return NO;
+	}
+}
+
 @implementation ICALTokenizer {
 	NSData *_data;
 	NSUInteger _line;
@@ -125,37 +153,34 @@ NS_ASSUME_NONNULL_BEGIN
 			}
 			break;
 		case ':': // Transition to value state
-				  // Check if transition is valid
-			if (_prevState == ICALTokenTypeParameterValue
-				|| _prevState == ICALTokenTypeQuotedParameterValue
-				|| _prevState == ICALTokenTypeProperty) {
-				_state = ICALTokenTypeValue;
-				return _prevState;
-			}
-			// Invalid transition to value state
-			_state = ICALTokenTypeError;
-			SET_ERROR(error, ICALParserUnexpectedPropetyValueSeperatorError,
-					  @"Unexpected property value seperator", _line, _position);
-			return _state;
-		case ';': // Parameter seperator. Transition to parameter state
-			if (_prevState == ICALTokenTypeProperty || _prevState == ICALTokenTypeParameterValue
-				|| _prevState == ICALTokenTypeQuotedParameterValue) {
-				_state = ICALTokenTypeParameter;
-				return _prevState;
-			}
-			// Invalid transition to parameter state
-			_state = ICALTokenTypeError;
-			SET_ERROR(error, ICALParserUnexpectedParameterError, @"Unexpected parameter seperator",
-					  _line, _position);
-			return _state;
-		case ',': // Parameter Value seperator. Stay until transition to value state
-			if (_state == ICALTokenTypeParameterValue
-				|| _state == ICALTokenTypeQuotedParameterValue) {
+			_state = ICALTokenTypeValue;
+
+			if (!_isTransitionValid(_prevState, _state)) {
+				_state = ICALTokenTypeError;
+				SET_ERROR(error, ICALParserUnexpectedPropetyValueSeperatorError,
+						  @"Unexpected property value seperator", _line, _position);
 				return _state;
 			}
-			SET_ERROR(error, ICALParserUnexpectedParameterValueError,
-					  @"Unexpected parameter value seperator", _line, _position);
-			return ICALTokenTypeError;
+
+			return _prevState;
+		case ';': // Parameter seperator. Transition to parameter state
+			_state = ICALTokenTypeParameter;
+
+			if (!_isTransitionValid(_prevState, _state)) {
+				_state = ICALTokenTypeError;
+				SET_ERROR(error, ICALParserUnexpectedParameterError,
+						  @"Unexpected parameter seperator", _line, _position);
+				return _state;
+			}
+			return _prevState;
+		case ',': // Parameter Value seperator. Stay until transition to value state
+			if (!_isTransitionValid(_prevState, _state)) {
+				_state = ICALTokenTypeError;
+				SET_ERROR(error, ICALParserUnexpectedParameterValueError,
+						  @"Unexpected parameter value seperator", _line, _position);
+				return _state;
+			}
+			return _state;
 		case '=': // Parameter name/value seperator. Transition to parameter value state
 			if (_state == ICALTokenTypeParameter) {
 				_state = ICALTokenTypeParameterValue;
