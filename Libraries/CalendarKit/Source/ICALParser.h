@@ -8,6 +8,47 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef NS_ENUM(NSUInteger, ICALTokenType) {
+	ICALTokenTypeNone,
+	ICALTokenTypeValue,
+	ICALTokenTypeParameter,
+	ICALTokenTypeParameterValue,
+	ICALTokenTypeProperty
+};
+
+/**
+ * A tokenizer for RFC 5545 content lines.
+ *
+ * @see https://tools.ietf.org/html/rfc5545#section-3.1
+ */
+@interface ICALTokenizer : NSObject
+
+/**
+ * @brief Initializes a new tokenizer with a content line.
+ *
+ * @param data The content line to tokenize.
+ *
+ * @return The initialized tokenizer.
+ */
+- (instancetype)initWithData:(NSData *)data;
+
+/**
+ * @brief Returns the next token type in the content line.
+ *
+ * @return The next token type in the content line.
+ */
+- (ICALTokenType)nextToken;
+
+/**
+ * @brief Returns the current token in the content line.
+ *
+ * This method should be called after a call to nextToken.
+ * @return The current token in the content line.
+ */
+- (NSString *)stringValue;
+
+@end
+
 @interface ICALParser : NSObject
 
 - (nullable ICALComponent *)parseData:(NSData *)data error:(NSError **)error;

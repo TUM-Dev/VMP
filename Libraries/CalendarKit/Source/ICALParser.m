@@ -3,12 +3,100 @@
  *
  * SPDX-License-Identifier: MIT
  */
+#import <stdint.h>
 
 #import "ICALParser.h"
 
-typedef NS_ENUM(NSUInteger, ICALParserState) { ICALParserStateNone };
-
 NS_ASSUME_NONNULL_BEGIN
+
+@implementation ICALTokenizer {
+	NSData *_data;
+	NSUInteger _position;
+	NSUInteger _lastPosition;
+	BOOL _inQuotedString;
+	ICALTokenType _state;
+}
+
+- (instancetype)initWithData:(NSData *)data {
+	self = [super init];
+
+	if (self) {
+		_data = data;
+		_position = 0;
+		_lastPosition = 0;
+		_inQuotedString = NO;
+		_state = ICALTokenTypeNone;
+	}
+
+	return self;
+}
+
+- (ICALTokenType)nextToken {
+	if (_state == ICALTokenTypeValue) {
+		return ICALTokenTypeNone;
+	}
+
+	const uint8_t *bytes;
+	NSUInteger length;
+
+	bytes = [_data bytes];
+	length = [_data length];
+
+	_lastPosition = _position;
+
+	while (_position < length) {
+		const uint8_t c = bytes[_position];
+		_position++;
+
+		if (_inQuotedString) {
+			if (c == '"') {
+				_inQuotedString = NO;
+			}
+			continue;
+		}
+
+		switch (c) {
+		case '"':
+			_inQuotedString = YES;
+			break;
+		case ':': // Transition to value state
+			_state = ICALTokenTypeValue;
+			return ICALTokenTypeProperty;
+		case ';': // Parameter seperator. Transition to parameter state
+			_state = ICALTokenTypeParameter;
+			return ICALTokenTypeParameter;
+		case ',': // Parameter Value seperator. Stay until transition to value state
+			if (_state == ICALTokenTypeParameterValue) {
+				return ICALTokenTypeParameterValue;
+			}
+			return ICALTokenTypeNone;
+		case '=': // Parameter name/value seperator. Transition to parameter value state
+			if (_state == ICALTokenTypeParameter) {
+				_state = ICALTokenTypeParameterValue;
+				return ICALTokenTypeParameter;
+			}
+
+			// Ignore if not in parameter state
+			continue;
+		}
+	}
+
+	return ICALTokenTypeNone;
+}
+
+- (NSString *)stringValue {
+	NSRange range;
+	NSData *subdata;
+	NSString *string;
+
+	range = NSMakeRange(_lastPosition, _position - _lastPosition);
+	subdata = [_data subdataWithRange:range];
+	string = [[NSString alloc] initWithData:subdata encoding:NSUTF8StringEncoding];
+
+	return string;
+}
+
+@end
 
 @implementation ICALParser
 
@@ -23,7 +111,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSArray<NSData *> *)_unfoldData:(NSData *)data {
 	NSMutableArray<NSData *> *lines;
 	NSMutableData *unfoldedData;
-	const char *bytes;
+	const uint8_t *bytes;
 	NSUInteger length;
 	NSUInteger i;
 
