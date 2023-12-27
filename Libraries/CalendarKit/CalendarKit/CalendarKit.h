@@ -4,4 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+#import <CalendarKit/ICALCalendar.h>
 #import <CalendarKit/ICALComponent.h>
+#import <CalendarKit/ICALError.h>
+#import <CalendarKit/ICALEvent.h>
+#import <CalendarKit/ICALTimeZone.h>
