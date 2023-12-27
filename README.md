@@ -22,7 +22,7 @@ The `Libraries` folder contains Objective-C libraries that are used across the p
 
 Binaries are located in the `Daemons` and `Tools` folder respectively. This includes the core of the stack:
 the `vmpserverd` daemon, which is responsible for managing the media processing.
-`Tools` only contains a proof-of-concept control client for `vmpserverd``.
+`Tools` only contains a proof-of-concept control client.
 
 You might have noticed the `nix` folder. We use NixOS for developing and testing. As we have some libraries
 that are not in the nix-pkgs upstream, we provide an overlay which adds the missing dependencies.
