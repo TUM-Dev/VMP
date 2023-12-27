@@ -36,9 +36,6 @@ pkgs.mkShell {
     pkgs.meson
     pkgs.pkg-config
     pkgs.ninja
-    # Remove once we get rid of the old device monitoring facilities
-    pkgs.libgudev
-    pkgs.libgudev.dev
     pkgs.libsoup_3
     pkgs.libsoup_3.dev
     pkgs.alsa-lib
