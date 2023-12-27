@@ -4,9 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "Foundation/NSObjCRuntime.h"
 #import <CalendarKit/ICALError.h>
-
 #import <stdint.h>
 
 #import "ICALParser.h"
@@ -20,6 +18,7 @@
 										   ICALParserLineKey : @((err_line))                       \
 									   }];                                                         \
 	}
+
 NS_ASSUME_NONNULL_BEGIN
 
 /*
@@ -34,13 +33,13 @@ static BOOL _isTransitionValid(ICALTokenType from, ICALTokenType to) {
 		return to == ICALTokenTypeParameter || to == ICALTokenTypeValue;
 	case ICALTokenTypeParameter:
 		// Parameter can transition to a parameter value or quoted parameter value (with '=')
-		return to == ICALTokenTypeParameterValue || to == ICALTokenTypeQuotedParameterValue;
+		return to & ICALTokenParameterValueMask;
 	case ICALTokenTypeQuotedParameterValue:
 	case ICALTokenTypeParameterValue:
 		// Parameter value can transition to a (quoted) parameter value (with ','), parameter (with
 		// ';'), or a value (with ':')
-		return to == ICALTokenTypeParameterValue || to == ICALTokenTypeQuotedParameterValue
-			   || to == ICALTokenTypeParameter || to == ICALTokenTypeValue;
+		return (to & ICALTokenParameterValueMask) || to == ICALTokenTypeParameter
+			   || to == ICALTokenTypeValue;
 
 	case ICALTokenTypeValue:
 		// Reached end-of-line, so no transition is valid
@@ -260,7 +259,16 @@ static BOOL _isTransitionValid(ICALTokenType from, ICALTokenType to) {
 
 @end
 
-@implementation ICALParser
+@implementation ICALParser {
+	// The content line tokenizer
+	ICALTokenizer *_tokenizer;
+	// Unfolded content lines
+	NSArray<NSData *> *_lines;
+	// Current line
+	NSUInteger _curLine;
+	// Error object for tokenizer
+	NSError *_tError;
+}
 
 /*
  * Unfolds the data by removing CRLF sequences and continuation lines.
@@ -312,7 +320,24 @@ static BOOL _isTransitionValid(ICALTokenType from, ICALTokenType to) {
 	return lines;
 }
 
-- (nullable ICALCalendar *)parseData:(NSData *)data error:(NSError **)error {
++ (instancetype)parserWithData:(NSData *)data {
+	return [[ICALParser alloc] initWithData:data];
+}
+
+- (instancetype)initWithData:(NSData *)data {
+	self = [super init];
+
+	if (self) {
+		_lines = [ICALParser _unfoldData:data];
+		_tokenizer = [ICALTokenizer init];
+		_curLine = 0;
+		_tError = nil;
+	}
+
+	return self;
+}
+
+- (nullable ICALCalendar *)parseWithError:(NSError **)error {
 	return nil;
 }
 

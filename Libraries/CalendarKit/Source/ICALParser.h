@@ -8,14 +8,20 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/// Bitwise AND with this mask to check if a token is an error
+NSUInteger const ICALTokenInvalidMask = 0x1;
+
+/// Bitwise AND with this mask to check if a token is a parameter value
+NSUInteger const ICALTokenParameterValueMask = 0x10;
+
 typedef NS_ENUM(NSUInteger, ICALTokenType) {
-	ICALTokenTypeNone,
-	ICALTokenTypeValue,
-	ICALTokenTypeParameter,
-	ICALTokenTypeParameterValue,
-	ICALTokenTypeQuotedParameterValue,
-	ICALTokenTypeProperty,
-	ICALTokenTypeError
+	ICALTokenTypeNone = 0x1,
+	ICALTokenTypeError = 0x2,
+	ICALTokenTypeValue = 0x4,
+	ICALTokenTypeParameter = 0x8,
+	ICALTokenTypeParameterValue = 0x10,
+	ICALTokenTypeQuotedParameterValue = 0x20 + 0x10,
+	ICALTokenTypeProperty = 0x40
 };
 
 /**
@@ -77,7 +83,11 @@ typedef NS_ENUM(NSUInteger, ICALTokenType) {
 
 @interface ICALParser : NSObject
 
-- (nullable ICALCalendar *)parseData:(NSData *)data error:(NSError **)error;
++ (instancetype)parserWithData:(NSData *)data;
+
+- (instancetype)initWithData:(NSData *)data;
+
+- (nullable ICALCalendar *)parseWithError:(NSError **)error;
 
 @end
 
