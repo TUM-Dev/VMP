@@ -255,4 +255,32 @@ const char *INCORRECT_QUOTED_PARAM_VALUE_2 = "ATTENDEE;CN=\"Doe,\"\" John\":mail
 	XCTAssertEqual([error code], ICALParserQuotedStringError, @"Error code is correct");
 }
 
+- (void)testTokenizerReuse {
+	ICALTokenizer *tokenizer;
+	NSData *begin;
+
+	tokenizer = [[ICALTokenizer alloc] init];
+	begin = [NSData dataWithBytes:BEGIN length:strlen(BEGIN)];
+
+	XCTAssertEqual([tokenizer nextTokenWithError:NULL], ICALTokenTypeNone,
+				   @"nextTokenWithError: returns ICALTokenTypeNone when no data is loaded");
+	XCTAssertEqualObjects([tokenizer stringValue], @"", @"stringValue returns empty string");
+
+	[tokenizer setData:begin line:0];
+
+	for (int i = 0; i < 2; i++) {
+		XCTAssertEqual([tokenizer nextTokenWithError:NULL], ICALTokenTypeProperty,
+					   @"returns ICALTokenTypeProperty when data is loaded");
+		XCTAssertEqualObjects([tokenizer stringValue], @"BEGIN", @"stringValue returns BEGIN");
+
+		XCTAssertEqual([tokenizer nextTokenWithError:NULL], ICALTokenTypeValue,
+					   @"returns ICALTokenTypeValue");
+		XCTAssertEqualObjects([tokenizer stringValue], @"VCALENDAR",
+							  @"stringValue returns VCALENDAR");
+
+		// Reset tokenizer
+		[tokenizer setData:begin line:1];
+	}
+}
+
 @end

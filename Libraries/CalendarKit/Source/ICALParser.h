@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#import <CalendarKit/ICALComponent.h>
+#import <CalendarKit/ICALCalendar.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -21,6 +21,14 @@ typedef NS_ENUM(NSUInteger, ICALTokenType) {
 /**
  * A tokenizer for RFC 5545 content lines.
  *
+ * this class can be used in two ways. You can either
+ * create an ICALTokenizer object with data directly
+ * (initWithData:line:), or load data after object
+ * creation.
+ *
+ * The latter can be done by sending setData:line:
+ * to the object.
+ *
  * @see https://tools.ietf.org/html/rfc5545#section-3.1
  */
 @interface ICALTokenizer : NSObject
@@ -33,6 +41,22 @@ typedef NS_ENUM(NSUInteger, ICALTokenType) {
  * @return The initialized tokenizer.
  */
 - (instancetype)initWithData:(NSData *)data line:(NSUInteger)line;
+
+/**
+	@brief Initializes a new tokenizer without data
+
+	You can load data using setData:line:.
+
+	@return The initialized tokenizer.
+*/
+- (instancetype)init;
+
+/**
+	@brief Set data and current line
+
+	This resets the state of the tokenizer.
+*/
+- (void)setData:(NSData *)data line:(NSUInteger)line;
 
 /**
  * @brief Returns the next token type in the content line.
@@ -53,7 +77,7 @@ typedef NS_ENUM(NSUInteger, ICALTokenType) {
 
 @interface ICALParser : NSObject
 
-- (nullable ICALComponent *)parseData:(NSData *)data error:(NSError **)error;
+- (nullable ICALCalendar *)parseData:(NSData *)data error:(NSError **)error;
 
 @end
 

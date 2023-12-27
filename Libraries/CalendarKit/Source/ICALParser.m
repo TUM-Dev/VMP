@@ -6,6 +6,7 @@
 
 #include "Foundation/NSObjCRuntime.h"
 #import <CalendarKit/ICALError.h>
+
 #import <stdint.h>
 
 #import "ICALParser.h"
@@ -66,15 +67,33 @@ static BOOL _isTransitionValid(ICALTokenType from, ICALTokenType to) {
 	if (self) {
 		_data = data;
 		_line = line;
-		_position = 0;
-		_valuePosition = 0;
-		_lastPosition = 0;
-		_inQuotedString = NO;
 		_state = ICALTokenTypeProperty;
 		_prevState = ICALTokenTypeNone;
 	}
 
 	return self;
+}
+
+- (instancetype)init {
+	self = [super init];
+
+	if (self) {
+		_state = ICALTokenTypeNone;
+		_prevState = ICALTokenTypeNone;
+	}
+
+	return self;
+}
+
+- (void)setData:(NSData *)data line:(NSUInteger)line {
+	_state = ICALTokenTypeProperty;
+	_prevState = ICALTokenTypeNone;
+	_position = 0;
+	_valuePosition = 0;
+	_lastPosition = 0;
+	_inQuotedString = NO;
+	_line = line;
+	_data = data;
 }
 
 /*
@@ -293,7 +312,7 @@ static BOOL _isTransitionValid(ICALTokenType from, ICALTokenType to) {
 	return lines;
 }
 
-- (nullable ICALComponent *)parseData:(NSData *)data error:(NSError **)error {
+- (nullable ICALCalendar *)parseData:(NSData *)data error:(NSError **)error {
 	return nil;
 }
 
