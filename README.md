@@ -17,12 +17,20 @@ Our aim is to bring the above features into a stable, and
 software-defined solution that works with industry-standard hardware, reducing
 costs significantly.
 
-## Subprojects
+## Structure
+The `Libraries` folder contains Objective-C libraries that are used across the project.
 
-As a complex project, VMP is split into multiple subprojects. The core of the software
-stack is the `vmpserverd` daemon, which is responsible for managing the media processing,
+Binaries are located in the `Daemons` and `Tools` folder respectively. This includes the core of the stack:
+the `vmpserverd` daemon, which is responsible for managing the media processing.
+`Tools` only contains a proof-of-concept control client for `vmpserverd``.
 
-See the [vmpserverd](vmpserverd/README.md) README for more information.
+You might have noticed the `nix` folder. We use NixOS for developing and testing. As we have some libraries
+that are not in the nix-pkgs upstream, we provide an overlay which adds the missing dependencies.
+
+Run `nix-shell` in the repository root to fetch all dependencies required for
+development. After this, you can develop and build all subprojects.
+
+See the [vmpserverd](Daemons/vmpserverd/README.md) README for more information about the daemon.
 
 ## License
 
