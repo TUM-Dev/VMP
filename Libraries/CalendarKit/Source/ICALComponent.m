@@ -6,9 +6,34 @@
 
 #import <CalendarKit/ICALComponent.h>
 
+#import "ICALComponent+Private.h"
+
 NS_ASSUME_NONNULL_BEGIN
 
+NSString *const ICALComponentTypeCalendar = @"VCALENDAR";
+NSString *const ICALComponentTypeEvent = @"VEVENT";
+NSString *const ICALComponentTypeTODO = @"VTODO";
+NSString *const ICALComponentTypeJournal = @"VJOURNAL";
+NSString *const ICALComponentTypeFB = @"VFREEBUSY";
+NSString *const ICALComponentTypeTimeZone = @"VTIMEZONE";
+NSString *const ICALComponentTypeAlarm = @"VALARM";
+
+NSString *const ICALPropertyValueKey = @"ICALPropertyValueKey";
+
 @implementation ICALComponent
+
+- (instancetype)initWithProperties:(NSDictionary<NSString *, NSDictionary *> *)properties
+					 subcomponents:(NSArray<ICALComponent *> *)subcomponents
+							 error:(NSError **)error {
+	self = [super init];
+	if (self) {
+		_type = @"";
+		_properties = [properties copy];
+		_subcomponents = [subcomponents copy];
+	}
+
+	return self;
+}
 
 @end
 

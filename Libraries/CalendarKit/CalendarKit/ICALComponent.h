@@ -8,20 +8,15 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/**
-	@brief The type of component.
+extern NSString *const ICALComponentTypeCalendar;
+extern NSString *const ICALComponentTypeEvent;
+extern NSString *const ICALComponentTypeTODO;
+extern NSString *const ICALComponentTypeJournal;
+extern NSString *const ICALComponentTypeFB;
+extern NSString *const ICALComponentTypeTimeZone;
+extern NSString *const ICALComponentTypeAlarm;
 
-	@see https://tools.ietf.org/html/rfc5545#section-3.6
- */
-typedef NS_ENUM(NSUInteger, ICALComponentType) {
-	ICALComponentTypeEvent,
-	ICALComponentTypeTodo,
-	ICALComponentTypeJournal,
-	ICALComponentTypeFreeBusy,
-	ICALComponentTypeTimezone,
-	ICALComponentTypeAlarm,
-	ICALComponentTypeUnknown
-};
+extern NSString *const ICALPropertyValueKey;
 
 /**
 	@brief The base class for all iCalendar components.
@@ -29,11 +24,24 @@ typedef NS_ENUM(NSUInteger, ICALComponentType) {
 @interface ICALComponent : NSObject
 
 /**
+	@brief ICALComponent initialiser
+
+	@param properties Component properties
+	@param subcomponents Children of this component
+	@param error Can be used by subclasses to indicate an error
+
+	@returns an initialised ICALComponent object
+*/
+- (instancetype)initWithProperties:(NSDictionary<NSString *, NSDictionary *> *)properties
+					 subcomponents:(NSArray<ICALComponent *> *)subcomponents
+							 error:(NSError **)error NS_DESIGNATED_INITIALIZER;
+
+/**
 	@brief The type of component.
 
 	@see ICALComponentType
  */
-@property (readonly) ICALComponentType type;
+@property (readonly) NSString *type;
 
 /**
 	@brief Properties of the component.
@@ -41,8 +49,11 @@ typedef NS_ENUM(NSUInteger, ICALComponentType) {
 	Properties of this component as they appear in the iCalendar data.
 	This data can be used to parse non-standard properties, such as
 	vendor-specific properties.
+
+	The key of the dictionary is the name of the property, the value
+	is a dictionary containing the parameters of the property.
 */
-@property (readonly) NSDictionary<NSString *, NSString *> *properties;
+@property (copy) NSDictionary<NSString *, NSDictionary *> *properties;
 
 /**
 	@brief Subcomponents of the component.
@@ -51,7 +62,7 @@ typedef NS_ENUM(NSUInteger, ICALComponentType) {
 	As known compoents have their own classes, one can introspect
 	the type of the subcomponent and cast it to the appropriate class.
 */
-@property (readonly) NSArray<ICALComponent *> *subcomponents;
+@property (copy) NSArray<ICALComponent *> *subcomponents;
 
 @end
 
