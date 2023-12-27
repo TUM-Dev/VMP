@@ -1,0 +1,1 @@
+# CalendarKit - An RFC 5545-compliant iCalendar library for Objective-C
