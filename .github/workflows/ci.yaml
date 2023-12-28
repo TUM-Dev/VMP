@@ -10,10 +10,12 @@ jobs:
     - uses: cachix/install-nix-action@v22
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-    - run: |
+    - name: Setup nix environment
+      run: nix-shell
+    - name: CalendarKit Tests
+      run: |
         nix-shell --run "
         cd Libraries/CalendarKit &&
         meson setup build &&
         ninja -C build test
         "
-
