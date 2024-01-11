@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "Foundation/NSArray.h"
 #import <CalendarKit/ICALError.h>
 #import <stdint.h>
 
@@ -17,6 +18,23 @@
 										   ICALParserPositionKey : @((err_position)),              \
 										   ICALParserLineKey : @((err_line))                       \
 									   }];                                                         \
+	}
+
+#define SET_PARSER_ERROR_NESTED(err_ptr, err_underlying, err_description)                          \
+	if (err_ptr) {                                                                                 \
+		*err_ptr = [NSError errorWithDomain:ICALErrorDomain                                        \
+									   code:ICALObjectParseError                                   \
+								   userInfo:@{                                                     \
+									   NSLocalizedDescriptionKey : (err_description),              \
+									   NSUnderlyingErrorKey : (err_underlying)                     \
+								   }];                                                             \
+	}
+
+#define SET_PARSER_ERROR(err_ptr, err_description)                                                 \
+	if (err_ptr) {                                                                                 \
+		*err_ptr = [NSError errorWithDomain:ICALErrorDomain                                        \
+									   code:ICALObjectParseError                                   \
+								   userInfo:@{NSLocalizedDescriptionKey : (err_description)}];     \
 	}
 
 NS_ASSUME_NONNULL_BEGIN
@@ -95,24 +113,6 @@ static BOOL _isTransitionValid(ICALTokenType from, ICALTokenType to) {
 	_data = data;
 }
 
-/*
- * State machine without transition to error state:
- *
- *                ;     ┌─────────────┐      =
- *          ┌──────────▶│  parameter  │──────────┐
- *          │           └─────────────┘          │
- *          │                  ▲                 │          ,
- *          │                  │                 │         ┌─┐
- *   ┌─────────────┐           │ ;               ▼         │ │
- *   │    none     │           │        ┌─────────────────┐▼ │
- *   └─────────────┘           └────────│ parameter value │──┘
- *                                      └─────────────────┘
- *                                               │
- *                                               │
- *                      ┌─────────────┐          │
- *                      │    value    │◀─────────┘
- *                      └─────────────┘      :
- */
 - (ICALTokenType)nextTokenWithError:(NSError **)error {
 	if (_state == ICALTokenTypeNone || _state == ICALTokenTypeError) {
 		return _state;
@@ -266,8 +266,10 @@ static BOOL _isTransitionValid(ICALTokenType from, ICALTokenType to) {
 	NSArray<NSData *> *_lines;
 	// Current line
 	NSUInteger _curLine;
-	// Error object for tokenizer
-	NSError *_tError;
+	// Parsed Components
+	NSMutableArray<ICALComponent *> *_components;
+	// (Partial) Properties of actively parsed component
+	NSMutableDictionary<NSString *, NSMutableDictionary *> *_currentProps;
 }
 
 /*
@@ -331,14 +333,169 @@ static BOOL _isTransitionValid(ICALTokenType from, ICALTokenType to) {
 		_lines = [ICALParser _unfoldData:data];
 		_tokenizer = [ICALTokenizer init];
 		_curLine = 0;
-		_tError = nil;
+		_components = [NSMutableArray array];
+		_currentProps = [NSMutableDictionary dictionary];
 	}
 
 	return self;
 }
 
-- (nullable ICALCalendar *)parseWithError:(NSError **)error {
-	return nil;
+- (nullable NSArray<ICALComponent *> *)parseWithError:(NSError **)error {
+	ICALTokenType tokenType;
+	NSError *tError = NULL;
+
+	if (_curLine != 0) {
+		SET_PARSER_ERROR(error, @"Parser has already been called");
+		return nil;
+	}
+
+	NSString *currentComponent = @"";
+	NSString *lastProperty = @"";
+	// Buffer parameter values until we see the next parameter or value
+	NSMutableArray *parameterValues = [NSMutableArray array];
+
+	for (NSData *line in _lines) {
+		NSString *lastParameter = @"";
+
+		[_tokenizer setData:line line:_curLine++];
+
+		tokenType = [_tokenizer nextTokenWithError:&tError];
+
+		while (!(tokenType & ICALTokenInvalidMask)) {
+			switch (tokenType) {
+			case ICALTokenTypeProperty: {
+				NSString *name;
+
+				name = [[_tokenizer stringValue] uppercaseString];
+				lastProperty = name;
+
+				// Do not add BEGIN/END properties to the component
+				if ([@"BEGIN" isEqualToString:name]) {
+					// Get the component type
+
+					tokenType = [_tokenizer nextTokenWithError:&tError];
+					if (tokenType & ICALTokenInvalidMask) {
+						SET_PARSER_ERROR_NESTED(error, tError,
+												@"Error while trying to get component type");
+						return nil;
+					} else if (tokenType != ICALTokenTypeValue) {
+						SET_PARSER_ERROR(error, @"Unexpected token type in BEGIN property");
+						return nil;
+					}
+
+					currentComponent = [[_tokenizer stringValue] uppercaseString];
+					break;
+				} else if ([@"END" isEqualToString:name]) {
+					// Create components out of the current properties
+					if ([currentComponent length] == 0) {
+						SET_PARSER_ERROR(error, @"Unexpected END property without BEGIN property");
+						return nil;
+					}
+
+					ICALComponent *component;
+					component = [[ICALComponent alloc] initWithProperties:_currentProps
+																	 type:currentComponent
+																	error:&tError];
+					// Reset the current properties
+					_currentProps = [NSMutableDictionary dictionary];
+					if (tError) {
+						SET_PARSER_ERROR_NESTED(error, tError,
+												@"Error while trying to create component");
+						return nil;
+					}
+
+					[_components addObject:component];
+					break;
+				} else if (_currentProps[name]) {
+					break; // FIXME: Are duplicate properties allowed?
+				}
+
+				// Create a new dictionary for the property
+				[_currentProps setObject:[NSMutableDictionary dictionary] forKey:name];
+				break;
+			}
+			case ICALTokenTypeParameter: {
+				[self _storeParameterValues:parameterValues
+							  withParameter:lastParameter
+								forProperty:lastProperty];
+
+				NSMutableDictionary *property = [_currentProps objectForKey:lastProperty];
+				lastParameter = [[_tokenizer stringValue] uppercaseString];
+				if ([lastParameter isEqualToString:@""]) {
+					SET_PARSER_ERROR(error, @"Unexpected empty parameter");
+					return nil;
+				}
+
+				// Add the parameter to the property with empty value dictionary
+				[property setObject:[NSMutableDictionary dictionary] forKey:lastParameter];
+				break;
+			}
+
+			// Parameter values are first added to an array, and later (see
+			// ICALTokenTypeParameter and ICALTokenTypeValue) added to the
+			// corresponding property.
+			//
+			// This is because a parameter can have multiple values, and we
+			// don't know if a parameter has multiple values until we see the
+			// next parameter or value.
+			case ICALTokenTypeParameterValue:
+				[parameterValues addObject:[[_tokenizer stringValue] uppercaseString]];
+				break;
+			case ICALTokenTypeQuotedParameterValue:
+				[parameterValues addObject:[_tokenizer stringValue]];
+				break;
+			case ICALTokenTypeValue: {
+				NSMutableDictionary *propDict;
+				NSString *value;
+
+				[self _storeParameterValues:parameterValues
+							  withParameter:lastParameter
+								forProperty:lastProperty];
+
+				propDict = [_currentProps objectForKey:lastProperty];
+				value = [_tokenizer stringValue];
+
+				[propDict setObject:value forKey:ICALPropertyValueKey];
+				break;
+			}
+			default:
+				break;
+			}
+
+			// Get the next token
+			tokenType = [_tokenizer nextTokenWithError:&tError];
+		}
+
+		if (tError) {
+			SET_PARSER_ERROR_NESTED(error, tError, @"Error while parsing content line");
+			return nil;
+		}
+	}
+
+	return _components;
+}
+
+- (void)_storeParameterValues:(NSMutableArray<NSString *> *)arr
+				withParameter:(NSString *)parameter
+				  forProperty:(NSString *)property {
+	NSMutableDictionary *dict;
+
+	if ([arr count] == 0 || [parameter isEqualToString:@""]) {
+		// Reset the array
+		[arr removeAllObjects];
+		return;
+	}
+
+	dict = [_currentProps objectForKey:property];
+
+	if ([arr count] == 1) {
+		[dict setObject:[arr objectAtIndex:0] forKey:parameter];
+	} else {
+		[dict setObject:[arr copy] forKey:parameter];
+	}
+
+	// Reset the array
+	[arr removeAllObjects];
 }
 
 @end
