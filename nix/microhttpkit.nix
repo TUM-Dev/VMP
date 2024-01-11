@@ -1,15 +1,10 @@
-{ libmicrohttpd, gnustep, lib, fetchFromGitHub, meson, ninja, clang, pkg-config, fetchpatch }:
+{ libmicrohttpd, gnustep, lib, meson, ninja, clang, pkg-config, fetchpatch }:
 
 gnustep.stdenv.mkDerivation rec {
   pname = "microhttpkit";
   version = "0.2.0";
 
-  src = fetchFromGitHub {
-    owner = "hmelder";
-    repo = "MicroHTTPKit";
-    rev = "v0.2.1-rc";
-    hash = "sha256-a8CCt5xsb0HxiAvqeZGpKNmhTHqKmghGqwdzlWJx/TE=";
-  };
+  src = ../Libraries/MicroHTTPKit;
 
   nativeBuildInputs = [ gnustep.make meson ninja clang pkg-config ];
   buildInputs = [ gnustep.base libmicrohttpd ];
