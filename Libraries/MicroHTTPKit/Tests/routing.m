@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "MicroHTTPKit/HKHTTPResponse.h"
 #import <MicroHTTPKit/MicroHTTPKit.h>
 #import <XCTest/XCTest.h>
 
