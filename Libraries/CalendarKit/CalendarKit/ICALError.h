@@ -19,7 +19,8 @@ enum {
 	ICALParserUnexpectedParameterValueError = 3,
 	ICALParserUnexpectedPropetyValueSeperatorError = 4,
 	ICALParserUnexpectedEndOfLineError = 5,
-	ICALParserQuotedStringError = 6
+	ICALParserQuotedStringError = 6,
+	ICALObjectParseError = 7,
 };
 
 NS_ASSUME_NONNULL_END
