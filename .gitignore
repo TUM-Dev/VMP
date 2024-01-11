@@ -178,3 +178,6 @@ config.plist
 # clangd
 compile_commands.json
 .clangd
+
+# Cache
+.cache
