@@ -87,7 +87,7 @@ typedef NS_ENUM(NSUInteger, ICALTokenType) {
 
 - (instancetype)initWithData:(NSData *)data;
 
-- (nullable ICALCalendar *)parseWithError:(NSError **)error;
+- (nullable NSArray<ICALComponent *> *)parseWithError:(NSError **)error;
 
 @end
 
