@@ -19,3 +19,10 @@ jobs:
         meson setup build &&
         ninja -C build test
         "
+    - name: MicroHTTPKit Tests
+      run: |
+        nix-shell --run "
+        cd Libraries/MicroHTTPKit &&
+        meson setup build &&
+        ninja -C build test
+        "
