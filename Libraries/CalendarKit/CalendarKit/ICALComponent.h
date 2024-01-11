@@ -27,13 +27,13 @@ extern NSString *const ICALPropertyValueKey;
 	@brief ICALComponent initialiser
 
 	@param properties Component properties
-	@param subcomponents Children of this component
+	@param type The type of component
 	@param error Can be used by subclasses to indicate an error
 
 	@returns an initialised ICALComponent object
 */
 - (instancetype)initWithProperties:(NSDictionary<NSString *, NSDictionary *> *)properties
-					 subcomponents:(NSArray<ICALComponent *> *)subcomponents
+							  type:(NSString *)type
 							 error:(NSError **)error NS_DESIGNATED_INITIALIZER;
 
 /**
@@ -54,15 +54,6 @@ extern NSString *const ICALPropertyValueKey;
 	is a dictionary containing the parameters of the property.
 */
 @property (copy) NSDictionary<NSString *, NSDictionary *> *properties;
-
-/**
-	@brief Subcomponents of the component.
-
-	Subcomponents of this component as they appear in the iCalendar data.
-	As known compoents have their own classes, one can introspect
-	the type of the subcomponent and cast it to the appropriate class.
-*/
-@property (copy) NSArray<ICALComponent *> *subcomponents;
 
 @end
 

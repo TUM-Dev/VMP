@@ -23,13 +23,12 @@ NSString *const ICALPropertyValueKey = @"ICALPropertyValueKey";
 @implementation ICALComponent
 
 - (instancetype)initWithProperties:(NSDictionary<NSString *, NSDictionary *> *)properties
-					 subcomponents:(NSArray<ICALComponent *> *)subcomponents
+							  type:(NSString *)type
 							 error:(NSError **)error {
 	self = [super init];
 	if (self) {
-		_type = @"";
+		_type = type;
 		_properties = [properties copy];
-		_subcomponents = [subcomponents copy];
 	}
 
 	return self;
