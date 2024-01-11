@@ -50,6 +50,9 @@ pkgs.mkShell {
     # MicroHTTPKit
     pkgs.microhttpkit
 
+    # MicroHTTPKit Dev (TODO: Move into Libraries/nix)
+    pkgs.libmicrohttpd
+
     pkgs.xctest
 
   ];
