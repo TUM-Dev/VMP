@@ -331,7 +331,7 @@ static BOOL _isTransitionValid(ICALTokenType from, ICALTokenType to) {
 
 	if (self) {
 		_lines = [ICALParser _unfoldData:data];
-		_tokenizer = [ICALTokenizer init];
+		_tokenizer = [[ICALTokenizer alloc] init];
 		_curLine = 0;
 		_components = [NSMutableArray array];
 		_currentProps = [NSMutableDictionary dictionary];
