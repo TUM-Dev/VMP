@@ -14,25 +14,56 @@
         <array>
             <string>vaapi</string>
         </array>
-        
+
         <key>mountpoints</key>
         <dict>
             <key>single</key>
             <string>intervideosrc channel={VIDEOCHANNEL.0} ! queue ! vapostproc ! vah264enc bitrate=2500 !
                 rtph264pay name=pay0 pt=96</string>
             <key>combined</key>
-            <string>compositor name=comp background=1
- sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810 sink_0::sizing-policy=1
- sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 sink_1::sizing-policy=1 !
- video/x-raw,width=1920,height=1080 ! queue ! vah264enc bitrate=2500 ! rtph264pay name=pay0 pt=96
- intervideosrc channel={VIDEOCHANNEL.0} ! videoconvert ! comp.sink_0
- intervideosrc channel={VIDEOCHANNEL.1} ! videoconvert ! comp.sink_1</string>
+        <!--
+            We use the vacompositor which uses VAAPI for hardware-accelerated compositing.
+
+            The presentation stream is fed into sink_0 and subsequently rescaled.
+            sink_0 is rescaled into a (smaller) window with the diagonal starting at the top left 
+            (0, 0), and ending at (1440, 810).
+
+            The camera stream is fed into sink_1 and rescaled into the upper right region
+            (1440, 0) to (480, 270).
+
+            Keep in mind that this scaling process does not respect the aspect ratio, but
+            we make sure that the feed coming from VIDEOCHANNEL.0 and VIDEOCHANNEL.1 have
+            a 16:9 aspect ratio (with black bars if necessary).
+
+            The output of the compositor is now a combination of presentation and camera stream.
+
+            We enforce 1080p and VAMemory by adding a capability filter (capsfilter) after the vacompositor.
+            This is then fed into the vah264enc (hardware accelerated encoding using VAAPI).
+
+            The last element in this (partial) pipeline is the rtp payloader, which is required by the
+            gstreamer-rtsp-server. The gstreamer-rtsp-server constructs a full pipeline based on this
+            partial one.
+        -->
+	    <string>vacompositor name=comp
+ sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810
+ sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 ! video/x-raw(memory:VAMemory), width=1920, height=1080 !
+ vah264enc bitrate=2500 ! rtph264pay name=pay0 pt=96
+ intervideosrc channel={VIDEOCHANNEL.0} ! comp.sink_0
+ intervideosrc channel={VIDEOCHANNEL.1} ! comp.sink_1</string>
         </dict>
-        
+
         <key>channels</key>
         <dict>
             <key>v4l2</key>
-            <string>v4l2src device={V4L2DEV} ! vapostproc ! video/x-raw, width=1920, height=1080 ! intervideosink channel={VIDEOCHANNEL.0}</string>
+            <!-- 
+                Open a capture card, or other v4l2 (Video 4 Linux) device with the v4l2src element.
+                We rescale the feed to 1080p and preserve the original aspect ratio by adding
+                borders if necessary (see "add-borders=1").
+
+                The rescaled video stream is then fed into an inter video sink, enabling inter-pipeline
+                communication in the same process.
+            -->
+            <string>v4l2src device={V4L2DEV} ! vapostproc add-borders=1 ! video/x-raw, width=1920, height=1080 ! intervideosink channel={VIDEOCHANNEL.0}</string>
             <key>videoTest</key>
             <string>videotestsrc is-live=1 ! video/x-raw,width={WIDTH},height={HEIGHT} !
  intervideosink channel={VIDEOCHANNEL.0}</string>
