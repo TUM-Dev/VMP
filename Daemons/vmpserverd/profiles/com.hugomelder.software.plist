@@ -44,9 +44,8 @@
         <key>mountpoints</key>
         <dict>
             <key>single</key>
-            <string>intervideosrc channel={VIDEOCHANNEL.0} ! video/x-raw, width=(int)1920,
-                height=(int)1080 ! queue ! videoconvert ! x264enc bitrate=2500 !
-                rtph264pay name=pay0 pt=96</string>
+            <string>intervideosrc channel={VIDEOCHANNEL.0} ! queue ! videoconvert ! x264enc bitrate=2500 !
+ rtph264pay name=pay0 pt=96</string>
             <key>combined</key>
             <string>compositor name=comp background=1
  sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810 sink_0::sizing-policy=1
@@ -59,7 +58,7 @@
         <key>channels</key>
         <dict>
             <key>v4l2</key>
-            <string>v4l2src device={V4L2DEV} ! videoconvert ! intervideosink channel={VIDEOCHANNEL.0}</string>
+            <string>v4l2src device={V4L2DEV} ! videoconvert ! video/x-raw, width=1920, height=1080 ! intervideosink channel={VIDEOCHANNEL.0}</string>
             <key>videoTest</key>
             <string>videotestsrc is-live=1 ! video/x-raw,width={WIDTH},height={HEIGHT} !
  intervideosink channel={VIDEOCHANNEL.0}</string>
