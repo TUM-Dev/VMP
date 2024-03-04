@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <MicroHTTPKit/HKHTTPConstants.h>
 #import <MicroHTTPKit/MicroHTTPKit.h>
 #import <glib.h>
 
@@ -24,6 +23,12 @@
 	NSDate *_startedAtDate;
 	NSString *_startedAtDateISO8601;
 }
+
+#define DEFAULT_HEADERS                                                                            \
+	(@{                                                                                            \
+		@"Access-Control-Allow-Origin" : @"*",                                                     \
+		@"Content-Type" : @"application/json",                                                     \
+	})
 
 + (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration error:(NSError **)error {
 	return [[VMPServerMain alloc] initWithConfiguration:configuration
@@ -88,12 +93,31 @@
 
 #pragma mark - HTTP handlers
 
+// CORS Handler for all endpoints
+- (HKHandlerBlock)_corsHandlerV1 {
+	return ^HKHTTPResponse *(HKHTTPRequest *request) {
+		HKHTTPResponse *response;
+		NSDictionary *headers = @{
+			@"Access-Control-Allow-Origin" : @"*",
+			@"Access-Control-Allow-Methods" : @"GET, OPTIONS",
+			@"Access-Control-Allow-Headers" : @"Authorization, Content-Type",
+			@"Access-Control-Max-Age" : @"3600",
+		};
+
+		response = [HKHTTPResponse responseWithStatus:200];
+		[response setHeaders:headers];
+
+		return response;
+	};
+}
+
 - (HKHandlerBlock)_statusHandlerV1 {
 	return ^HKHTTPResponse *(HKHTTPRequest *request) {
 		VMPProfileModel *profile;
+		HKHTTPJSONResponse *response;
 		profile = [_profileMgr currentProfile];
 
-		NSDictionary *response = @{
+		NSDictionary *data = @{
 			@"version" : _version,
 			@"platform" : [_profileMgr runtimePlatform],
 			@"profile" : @{
@@ -105,7 +129,9 @@
 			@"startedAt" : _startedAtDateISO8601,
 		};
 
-		return [HKHTTPJSONResponse responseWithJSONObject:response status:200 error:NULL];
+		response = [HKHTTPJSONResponse responseWithJSONObject:data status:200 error:NULL];
+		[response setHeaders:DEFAULT_HEADERS];
+		return response;
 	};
 }
 
@@ -187,30 +213,12 @@
 	HKRoute *configRoute;
 	HKRoute *channelGraphRoute;
 	HKRoute *mountpointGraphRoute;
+	HKHandlerBlock CORSHandler;
 
 	router = [_httpServer router];
+	CORSHandler = [self _corsHandlerV1];
 
 	// FIXME: Implement authorization via middleware
-	[router setMiddleware:^HKHTTPResponse *(HKHTTPRequest *request) {
-		// Setup a very basic CORS handler
-		if ([request method] == HKHTTPMethodOptions) {
-			HKHTTPResponse *response;
-			NSDictionary *headers = @{
-				@"Access-Control-Allow-Origin" : @"*",
-				@"Access-Control-Allow-Methods" : @"GET, OPTIONS",
-				@"Access-Control-Allow-Headers" : @"Authorization, Content-Type",
-				@"Access-Control-Max-Age" : @"3600",
-			};
-
-			response = [HKHTTPResponse responseWithStatus:200];
-			[response setHeaders:headers];
-			[response setCheckIfEndpointExists:YES];
-
-			return response;
-		}
-
-		return nil;
-	}];
 
 	// GET /api/v1/status
 	statusRoute = [HKRoute routeWithPath:@"/api/v1/status"
@@ -229,10 +237,10 @@
 										   method:HKHTTPMethodGET
 										  handler:[self _mountpointGraphHandlerV1]];
 
-	[router registerRoute:statusRoute];
-	[router registerRoute:configRoute];
-	[router registerRoute:channelGraphRoute];
-	[router registerRoute:mountpointGraphRoute];
+	[router registerRoute:statusRoute withCORSHandler:CORSHandler];
+	[router registerRoute:configRoute withCORSHandler:CORSHandler];
+	[router registerRoute:channelGraphRoute withCORSHandler:CORSHandler];
+	[router registerRoute:mountpointGraphRoute withCORSHandler:CORSHandler];
 }
 
 #pragma mark - Server Lifecycle
