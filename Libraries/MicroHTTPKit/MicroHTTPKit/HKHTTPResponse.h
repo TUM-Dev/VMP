@@ -33,6 +33,11 @@ NS_ASSUME_NONNULL_BEGIN
 								status:(NSUInteger)status
 								 error:(NSError **)error;
 
++ (instancetype)responseWithJSONObject:(id)JSONObject
+								status:(NSUInteger)status
+							   headers:(NSDictionary<NSString *, NSString *> *)headers
+								 error:(NSError **)error;
+
 - (instancetype)initWithJSONObject:(id)JSONObject status:(NSUInteger)status error:(NSError **)error;
 
 @end
