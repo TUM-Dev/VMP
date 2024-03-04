@@ -16,14 +16,30 @@
         </array>
 
         <!--
-            A mountpoint is a single RTSP stream. Each mountpoint is configured in the
-            vmpserverd config.plist and receives a unique name.
-
-            You can choose between various types of mountpoints in the config.plist (currently single, and combined),
-            but every mountpoint needs a GStreamer pipeline description.
-
-            The sink of this pipeline must be a rtp payloader with the correct payload type (pt) and name
-            (See GStreamer RTSP Server for more information about the naming convention).
+        Mountpoints and the underlying GStreamer pipelines are managed
+        by the GStreamer RTSP server.
+            
+        You can choose between various types of mountpoints in the config.plist
+        (currently single, and combined), but every mountpoint needs a GStreamer
+        pipeline description.
+        
+        Pipeline configurations for mountpoints must contain rtp payloaders as
+        sink elements in the format pay%d, where %d is a non-negative integer
+        (Further information can be found in the GStreamer RTSP Server
+        documentation).
+        
+        We use variables enclosed in '{}' for values that are populated during pipelines
+        construction.
+        
+        Currently, the following variables are available:
+        - {VIDEOCHANNEL.%u}: The video channel name. Enumerated using unsigned
+        integers, starting at 0 (e.g. {VIDEOCHANNEL.0})
+        - {PULSEDEV}: The pulse audio device name
+        (e.g. alsa_input.pci-0000_00_03.0.analog-stereo)
+        
+        'pactl list sources short' lists all availables sources. The second column
+        in the table is the pulseaudio device name.
+        Replace 'sources' with 'sinks' to get a list of all available sinks.
         -->
         <key>mountpoints</key>
         <dict>

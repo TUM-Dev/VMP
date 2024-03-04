@@ -19,13 +19,14 @@
         Mountpoints and the underlying GStreamer pipelines are managed
         by the GStreamer RTSP server.
         
-        By default, a 1080p preset is used for both the single, and combined
-        mountpoints. As we only use "channels" in the context of video streams,
-        the additional key "audioProviders" specifies pipeline templates for
-        the audio channel.
+        You can choose between various types of mountpoints in the config.plist
+        (currently single, and combined), but every mountpoint needs a GStreamer
+        pipeline description.
         
-        Pipeline configurations for mountpoints should contain rtp payloaders
-        in the format pay%d, where %d is a non-negative integer.
+        Pipeline configurations for mountpoints must contain rtp payloaders as
+        sink elements in the format pay%d, where %d is a non-negative integer
+        (Further information can be found in the GStreamer RTSP Server
+        documentation).
         
         We use variables enclosed in '{}' for values that are populated during pipelines
         construction.
