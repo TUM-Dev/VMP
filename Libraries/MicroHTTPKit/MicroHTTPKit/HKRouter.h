@@ -47,7 +47,7 @@ extern NSString *const HKResponseStatusKey;
  */
 @property (copy, nullable) HKHandlerBlock middleware;
 
-- (HKHandlerBlock)handlerForRequest:(HKHTTPRequest *)request;
+- (nullable HKHandlerBlock)handlerForRequest:(HKHTTPRequest *)request;
 
 + (instancetype)routerWithRoutes:(NSArray<HKRoute *> *)routes
 				 notFoundHandler:(HKHandlerBlock)notFoundHandler;

@@ -55,7 +55,9 @@
 	return self;
 }
 
-- (HKHandlerBlock)handlerForRequest:(HKHTTPRequest *)request {
+// TODO: We can probably store all registered routes in a dictionary instead
+// with the key being the HKRoute and the value the handler block.
+- (nullable HKHandlerBlock)handlerForRequest:(HKHTTPRequest *)request {
 	NSString *requestPath;
 	requestPath = [[request URL] path];
 
@@ -66,7 +68,7 @@
 		}
 	}
 
-	return [self notFoundHandler];
+	return nil;
 }
 
 - (void)registerRoute:(HKRoute *)route {
