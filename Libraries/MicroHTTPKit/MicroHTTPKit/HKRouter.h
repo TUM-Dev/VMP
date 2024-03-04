@@ -55,6 +55,7 @@ extern NSString *const HKResponseStatusKey;
 - (instancetype)initWithRoutes:(NSArray<HKRoute *> *)routes
 			   notFoundHandler:(HKHandlerBlock)notFoundHandler NS_DESIGNATED_INITIALIZER;
 
+- (void)registerRoute:(HKRoute *)route withCORSHandler:(HKHandlerBlock)handler;
 - (void)registerRoute:(HKRoute *)route;
 
 - (NSArray<HKRoute *> *)routes;

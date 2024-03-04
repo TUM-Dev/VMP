@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#import <MicroHTTPKit/HKHTTPConstants.h>
 #import <MicroHTTPKit/HKRouter.h>
 
 @interface HKRouter ()
@@ -69,6 +70,17 @@
 	}
 
 	return nil;
+}
+
+- (void)registerRoute:(HKRoute *)route withCORSHandler:(HKHandlerBlock)handler {
+	NSString *path;
+	HKRoute *corsRoute;
+
+	path = [route path];
+	corsRoute = [HKRoute routeWithPath:path method:HKHTTPMethodPOST handler:handler];
+
+	[_routes addObject:route];
+	[_routes addObject:corsRoute];
 }
 
 - (void)registerRoute:(HKRoute *)route {
