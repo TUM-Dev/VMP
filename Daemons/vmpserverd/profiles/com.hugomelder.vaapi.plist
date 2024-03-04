@@ -15,9 +15,25 @@
             <string>vaapi</string>
         </array>
 
+        <!--
+            A mountpoint is a single RTSP stream. Each mountpoint is configured in the
+            vmpserverd config.plist and receives a unique name.
+
+            You can choose between various types of mountpoints in the config.plist (currently single, and combined),
+            but every mountpoint needs a GStreamer pipeline description.
+
+            The sink of this pipeline must be a rtp payloader with the correct payload type (pt) and name
+            (See GStreamer RTSP Server for more information about the naming convention).
+        -->
         <key>mountpoints</key>
         <dict>
             <key>single</key>
+            <!--
+                intervideo{src,sink} is a mechanism to share buffers and events across independent
+                pipelines. We connect to the channel {VIDEOCHANNEL.0} and do the postprocessing
+                and h264 encoding on GPU (using VAAPI). The resulting h264 stream is then fed
+                into the rtp payloader.
+            -->
             <string>intervideosrc channel={VIDEOCHANNEL.0} ! queue ! vapostproc ! vah264enc bitrate=2500 !
                 rtph264pay name=pay0 pt=96</string>
             <key>combined</key>
@@ -56,7 +72,7 @@
         <dict>
             <key>v4l2</key>
             <!-- 
-                Open a capture card, or other v4l2 (Video 4 Linux) device with the v4l2src element.
+                Opens a capture card, or other v4l2 (Video 4 Linux) device with the v4l2src element.
                 We rescale the feed to 1080p and preserve the original aspect ratio by adding
                 borders if necessary (see "add-borders=1").
 
@@ -71,6 +87,12 @@
         <key>audioProviders</key>
         <dict>
             <key>pulse</key>
+            <!--
+                Opens a pulseaudio device. Available input devices can be found with
+                `pactl list sources short`. The second column is the pulseaudio device name.
+
+                The input is encoded using an AAC software encoder, and then packaged as a rtp payload.
+            -->
             <string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! queue ! rtpmp4apay name=pay1 pt=97</string>
             <key>audioTest</key>
             <string>audiotestsrc ! voaacenc bitrate=96000 ! queue ! rtpmp4apay name=pay1 pt=97</string>
