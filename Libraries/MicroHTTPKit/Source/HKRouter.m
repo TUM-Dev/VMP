@@ -77,7 +77,7 @@
 	HKRoute *corsRoute;
 
 	path = [route path];
-	corsRoute = [HKRoute routeWithPath:path method:HKHTTPMethodPOST handler:handler];
+	corsRoute = [HKRoute routeWithPath:path method:HKHTTPMethodOptions handler:handler];
 
 	[_routes addObject:route];
 	[_routes addObject:corsRoute];
