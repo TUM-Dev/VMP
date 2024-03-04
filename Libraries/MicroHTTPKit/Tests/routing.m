@@ -166,10 +166,12 @@ static const NSString *RESPONSE_STRING = @"Received!";
 
 - (void)testMiddleware {
 	HKHTTPServer *server;
+	HKRouter *router;
 	NSHTTPURLResponse *responseObj;
 	NSError *error = NULL;
 
 	server = [[HKHTTPServer alloc] initWithPort:8081];
+	router = [server router];
 	XCTAssertNotNil(server, @"Server is valid");
 
 	[[server router] setMiddleware:^HKHTTPResponse *(HKHTTPRequest *request) {
@@ -192,6 +194,16 @@ static const NSString *RESPONSE_STRING = @"Received!";
 		return responseObj;
 	}];
 
+	HKRoute *route =
+		[HKRoute routeWithPath:@"/middlewareTest"
+						method:HKHTTPMethodGET
+					   handler:^(HKHTTPRequest *request) {
+						   return [HKHTTPResponse
+							   responseWithData:[@"Hello!" dataUsingEncoding:NSUTF8StringEncoding]
+										 status:200];
+					   }];
+
+	[router registerRoute:route];
 	XCTAssertTrue([server startWithError:NULL], @"Server started successfully");
 
 	// Simple GET request
@@ -211,10 +223,14 @@ static const NSString *RESPONSE_STRING = @"Received!";
 	XCTAssertEqualObjects([response objectForKey:@"queryParameters"], @{},
 						  @"Query parameters are empty");
 
+	// Simple GET Request with unknown route
+	// Test if middleware settings work
+	url = [NSURL URLWithString:@"http://localhost:8081/notExistent"];
+	data = [Routing _sendRequest:url response:&responseObj error:&error];
+	XCTAssertEqual([responseObj statusCode], 404, @"HTTP status code is 404");
+
 	// Simple GET Request with additional headers and query parameters
-
 	NSURLResponse *rawURLResponse;
-
 	url = [NSURL URLWithString:@"http://localhost:8081/middlewareTest?foo=bar"];
 	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
 	[request setValue:@"application/json" forHTTPHeaderField:@"Accept"];
@@ -225,9 +241,15 @@ static const NSString *RESPONSE_STRING = @"Received!";
 	XCTAssertNotNil(data, @"Response data is valid");
 	XCTAssert(!error, @"Request sent without error");
 
+	XCTAssert([rawURLResponse isKindOfClass:[NSHTTPURLResponse class]],
+			  @"Response is of type NSHTTPURLResponse");
+	responseObj = (NSHTTPURLResponse *) rawURLResponse;
+
 	response = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
 	XCTAssertNotNil(response, @"Response data is valid");
 	XCTAssert(!error, @"Response data is valid");
+
+	NSLog(@"HTTP Status: %ld", [responseObj statusCode]);
 
 	XCTAssertEqual([responseObj statusCode], 200, @"HTTP status code is 200");
 	XCTAssertEqualObjects([response objectForKey:@"method"], @"GET", @"Method is GET");
