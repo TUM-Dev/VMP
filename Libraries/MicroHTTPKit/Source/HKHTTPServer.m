@@ -112,9 +112,6 @@ static enum MHD_Result accessHandler(void *cls, struct MHD_Connection *connectio
 			request = (__bridge HKHTTPRequest *) (*con_cls);
 		}
 
-		NSLog(@"Request body size: %lu", *upload_data_size);
-		NSLog(@"Headers: %@", [request headers]);
-
 		// If we have upload data, we need to process it. Otherwise, we can continue
 		// processing the request.
 		if (*upload_data_size != 0) {
