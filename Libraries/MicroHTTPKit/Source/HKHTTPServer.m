@@ -209,16 +209,19 @@ static void requestCompletedCallback(__attribute__((unused)) void *cls,
 	HKHandlerBlock middlewareHandler = nil;
 	NSData *responseData = nil;
 	NSDictionary<NSString *, NSString *> *responseHeaders = nil;
-
+	HKHandlerBlock handler = [[self router] handlerForRequest:request];
 	middlewareHandler = [[self router] middleware];
-	// Check if a middleware handler is registered
-	if (middlewareHandler) {
+
+	if (!handler) {
+		NSLog(@"Could not find handler!");
+		handler = [[self router] notFoundHandler];
+		response = handler(request);
+	} else if (middlewareHandler) {
 		response = middlewareHandler(request);
 	}
 
 	// If middleware set a response, use it. Otherwise, use the response from the router.
 	if (response == nil) {
-		HKHandlerBlock handler = [[self router] handlerForRequest:request];
 		// Execute the installed handler block
 		response = handler(request);
 	}
