@@ -72,6 +72,30 @@ static NSString *const envBinary = @"/usr/bin/env";
 		// Read output
 		outputData = [[outputPipe fileHandleForReading] readDataToEndOfFile];
 
+		/*
+		 * Example output without version preamble:
+		 * <VERSION>
+		 * vainfo: Supported profile and entrypoints
+		 * 	VAProfileMPEG2Simple            : VAEntrypointVLD
+		 * 	VAProfileMPEG2Main              : VAEntrypointVLD
+		 * 	VAProfileVC1Simple              : VAEntrypointVLD
+		 * 	VAProfileVC1Main                : VAEntrypointVLD
+		 * 	VAProfileVC1Advanced            : VAEntrypointVLD
+		 * 	VAProfileH264ConstrainedBaseline: VAEntrypointVLD
+		 * 	VAProfileH264ConstrainedBaseline: VAEntrypointEncSlice
+		 * 	VAProfileH264Main               : VAEntrypointVLD
+		 * 	VAProfileH264Main               : VAEntrypointEncSlice
+		 * 	VAProfileH264High               : VAEntrypointVLD
+		 * 	VAProfileH264High               : VAEntrypointEncSlice
+		 * 	VAProfileHEVCMain               : VAEntrypointVLD
+		 * 	VAProfileHEVCMain               : VAEntrypointEncSlice
+		 * 	VAProfileHEVCMain10             : VAEntrypointVLD
+		 * 	VAProfileHEVCMain10             : VAEntrypointEncSlice
+		 * 	VAProfileJPEGBaseline           : VAEntrypointVLD
+		 * 	VAProfileVP9Profile0            : VAEntrypointVLD
+		 * 	VAProfileVP9Profile2            : VAEntrypointVLD
+		 * 	VAProfileNone                   : VAEntrypointVideoProc
+		 */
 		if ([outputData length] > 0) {
 			VMPDebug(@"vainfo output: %@", [[NSString alloc] initWithData:outputData
 																 encoding:NSUTF8StringEncoding]);
@@ -79,13 +103,17 @@ static NSString *const envBinary = @"/usr/bin/env";
 
 			outputString = [[NSString alloc] initWithData:outputData encoding:NSUTF8StringEncoding];
 
-			// TODO: Check explicitly for h264 hardware encoding support
-			// We are currently assuming that it is supported if VAAPI is supported
 			if ([outputString containsString:@"VA-API version"]) {
 				VMPInfo(@"Detected platform supporting VAAPI");
-				return [VMPProfileManager managerWithPath:path
-										  runtimePlatform:VMPProfilePlatformVAAPI
-													error:error];
+
+				if ([outputString containsString:@"VAProfileH264"]) {
+					VMPInfo(@"VAProfileH264 is supported!");
+					return [VMPProfileManager managerWithPath:path
+											  runtimePlatform:VMPProfilePlatformVAAPI
+														error:error];
+				} else {
+					VMPInfo(@"No support for VAProfileH264. Cannot use VAAPI...");
+				}
 			}
 		}
 	}
