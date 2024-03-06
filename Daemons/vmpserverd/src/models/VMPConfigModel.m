@@ -24,6 +24,7 @@
 		SET_PROPERTY(_rtspAddress, @"rtspAddress");
 		SET_PROPERTY(_rtspPort, @"rtspPort");
 		SET_PROPERTY(_httpPort, @"httpPort");
+		SET_PROPERTY(_httpAuth, @"httpAuth");
 		SET_PROPERTY(_httpUsername, @"httpUsername");
 		SET_PROPERTY(_httpPassword, @"httpPassword");
 
@@ -86,6 +87,7 @@
 	VMP_ASSERT(_rtspAddress, @"rtspAddress is nil");
 	VMP_ASSERT(_rtspPort, @"rtspPort is nil");
 	VMP_ASSERT(_httpPort, @"httpPort is nil");
+	VMP_ASSERT(_httpAuth, @"httpAuth is nil");
 	VMP_ASSERT(_httpUsername, @"httpUsername is nil");
 	VMP_ASSERT(_httpPassword, @"httpPassword is nil");
 	VMP_ASSERT(_mountpoints, @"mountpoints is nil");

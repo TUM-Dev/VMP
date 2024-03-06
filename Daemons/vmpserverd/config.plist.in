@@ -25,9 +25,11 @@
     <key>httpPort</key>
     <string>8080</string>
     <!--
-        Specify the username and password for
-        HTTP basic authorization here.
+        Specify the username and password for HTTP basic authorization here, or
+        disable it all together.
     -->
+    <key>httpAuth</key>
+    <false/>
     <key>httpUsername</key>
     <string>admin</string>
     <key>httpPassword</key>

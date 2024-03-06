@@ -22,6 +22,8 @@
 
 @property (nonatomic, strong) NSString *httpPort;
 
+@property (nonatomic, strong) NSNumber *httpAuth;
+
 @property (nonatomic, strong) NSString *httpUsername;
 
 @property (nonatomic, strong) NSString *httpPassword;
