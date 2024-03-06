@@ -12,6 +12,11 @@
 
 #include <microhttpd.h>
 
+HKConnectionLogger logger = ^(HKHTTPRequest *r) {
+	NSLog(@"%@ %@ Headers: %@ Query Params: %@", [r method], [r URL], [r headers],
+		  [r queryParameters]);
+};
+
 // Private methods for request handling
 @interface HKHTTPServer (Private)
 - (enum MHD_Result)_sendResponseForRequest:(HKHTTPRequest *)request
@@ -65,7 +70,6 @@ static enum MHD_Result accessHandler(void *cls, struct MHD_Connection *connectio
 									 const char *upload_data, size_t *upload_data_size,
 									 void **con_cls) {
 	@autoreleasepool {
-		NSLog(@"Received request for %s %s with body size %lu", method, url, *upload_data_size);
 		HKHTTPServer *server;
 		HKHTTPRequest *request;
 
@@ -107,6 +111,7 @@ static enum MHD_Result accessHandler(void *cls, struct MHD_Connection *connectio
 			// Set the request object as the connection class
 			// This is a __bridge_retained cast, so we need to release the object later on
 			*con_cls = (__bridge_retained void *) (request);
+			logger(request);
 		} else {
 			// This is a subsequent call for this request, so we need to retrieve the request
 			// object from the connection class
