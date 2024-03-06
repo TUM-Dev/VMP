@@ -218,7 +218,86 @@
 	router = [_httpServer router];
 	CORSHandler = [self _corsHandlerV1];
 
-	// FIXME: Implement authorization via middleware
+	// The middleware is called after the initial
+	// request was parsed and checked against the
+	// list of known routes.
+	//
+	// The middleware is responsible for
+	// authentication.
+	[router setMiddleware:^HKHTTPResponse *(HKHTTPRequest *request) {
+		NSString *authVal;
+		NSString *authPair;
+		NSDictionary *response;
+		NSData *decodedData;
+
+		authVal = [request headers][HKHTTPHeaderAuthorization];
+		if (!authVal) {
+			response = @{
+				@"error" : @"Missing Authorization Header",
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:401 error:NULL];
+		}
+
+		decodedData = [[NSData data] initWithBase64EncodedString:authVal options:0];
+		if (!decodedData) {
+			NSDictionary<NSString *, NSString *> *headers;
+
+			response = @{
+				@"error" : @"Failed to decode the base64-encoded basic auth value",
+			};
+			headers = @{
+				HKHTTPHeaderContentType : HKHTTPHeaderContentApplicationJSON,
+				@"WWW-Authenticate" : @"Basic realm=\"vmp\"",
+			};
+
+			// When authorization fails due to a missing Authorization header,
+			// the server should respond with a 401 Unauthorized status code and
+			// include a WWW-Authenticate header in the response.
+			return [HKHTTPJSONResponse responseWithJSONObject:response
+													   status:500
+													  headers:headers
+														error:NULL];
+		}
+
+		authPair = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
+		if (!authPair) {
+			response = @{
+				@"error" : @"Could not convert base64-decoded Basic Auth value into a string",
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:500 error:NULL];
+		}
+
+		NSLog(@"authVal: %@ decodedData: %@ authPair %@", authVal, decodedData, authPair);
+
+		// Find the first occurrence of ":" to separate username from password
+		// Note that the username must not contain a colon (See. RFC7617 for addtional details).
+		NSRange range = [authPair rangeOfString:@":"];
+		if (range.location != NSNotFound) {
+			NSString *username;
+			NSString *password;
+
+			username = [authPair substringToIndex:range.location];
+			password = [authPair substringFromIndex:range.location + range.length];
+
+			if ([[_configuration httpUsername] isEqual:username] &&
+				[[_configuration httpPassword] isEqual:password]) {
+				// Do not overwrite HTTP response in middleware
+				// if authorization was successful.
+				return nil;
+			}
+
+			response = @{
+				@"error" : @"Invalid username are password",
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:401 error:NULL];
+		} else {
+			response = @{
+				@"error" :
+					@"Could not find username password seperator (:) in decoded basic auth value",
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:401 error:NULL];
+		}
+	}];
 
 	// GET /api/v1/status
 	statusRoute = [HKRoute routeWithPath:@"/api/v1/status"
