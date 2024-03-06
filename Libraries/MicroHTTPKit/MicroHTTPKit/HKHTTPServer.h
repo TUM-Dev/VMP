@@ -14,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 typedef void (^HKConnectionLogger)(HKHTTPRequest *req);
 
 // The default logger can be overwritten, by changing this global variable.
-extern HKConnectionLogger logger;
+extern HKConnectionLogger HKDefaultConnectionLogger;
 
 @interface HKHTTPServer : NSObject
 

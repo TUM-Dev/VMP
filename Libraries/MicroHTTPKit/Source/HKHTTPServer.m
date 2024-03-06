@@ -12,7 +12,7 @@
 
 #include <microhttpd.h>
 
-HKConnectionLogger logger = ^(HKHTTPRequest *r) {
+HKConnectionLogger HKDefaultConnectionLogger = ^(HKHTTPRequest *r) {
 	NSLog(@"%@ %@ Headers: %@ Query Params: %@", [r method], [r URL], [r headers],
 		  [r queryParameters]);
 };
@@ -111,7 +111,7 @@ static enum MHD_Result accessHandler(void *cls, struct MHD_Connection *connectio
 			// Set the request object as the connection class
 			// This is a __bridge_retained cast, so we need to release the object later on
 			*con_cls = (__bridge_retained void *) (request);
-			logger(request);
+			HKDefaultConnectionLogger(request);
 		} else {
 			// This is a subsequent call for this request, so we need to retrieve the request
 			// object from the connection class
