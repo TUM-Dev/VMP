@@ -13,4 +13,5 @@ extern NSString *const HKHTTPMethodPOST;
 extern NSString *const HKHTTPMethodPUT;
 
 extern NSString *const HKHTTPHeaderContentType;
+extern NSString *const HKHTTPHeaderAuthorization;
 extern NSString *const HKHTTPHeaderContentApplicationJSON;

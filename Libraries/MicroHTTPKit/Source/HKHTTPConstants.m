@@ -12,5 +12,6 @@ NSString *const HKHTTPMethodOptions = @"OPTIONS";
 NSString *const HKHTTPMethodPOST = @"POST";
 NSString *const HKHTTPMethodPUT = @"PUT";
 
-NSString *const HKHTTPHeaderContentType = @"Content-Type";
+NSString *const HKHTTPHeaderContentType = @"content-type";
+NSString *const HKHTTPHeaderAuthorization = @"authorization";
 NSString *const HKHTTPHeaderContentApplicationJSON = @"application/json";
