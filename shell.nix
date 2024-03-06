@@ -50,11 +50,11 @@ pkgs.mkShell {
     # MicroHTTPKit
     pkgs.microhttpkit
 
+    pkgs.libdispatch
+
     # MicroHTTPKit Dev (TODO: Move into Libraries/nix)
     pkgs.libmicrohttpd
-
     pkgs.xctest
-
   ];
 
   shellHook = ''

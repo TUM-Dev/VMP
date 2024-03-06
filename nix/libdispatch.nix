@@ -14,6 +14,7 @@ clangStdenv.mkDerivation rec {
   nativeBuildInputs = [ cmake ];
   cmakeFlags = [ "-DCMAKE_INSTALL_LIBDIR=lib" ];
     
+  # Remove this once libdispatch includes a pkgconfig file
   pkgconfig = writeText "libdispatch.pc" ''
     prefix=@out@
     exec_prefix=@out@
