@@ -258,8 +258,10 @@ static const NSString *RESPONSE_STRING = @"Received!";
 	XCTAssertEqualObjects([response objectForKey:@"queryParameters"], @{@"foo" : @"bar"},
 						  @"Query parameters are foo=bar");
 	XCTAssertGreaterThan([[response objectForKey:@"headers"] count], 0, @"Headers are not empty");
-	XCTAssertEqualObjects([[response objectForKey:@"headers"] objectForKey:@"Accept"],
+	XCTAssertEqualObjects([[response objectForKey:@"headers"] objectForKey:@"accept"],
 						  @"application/json", @"Accept header is application/json");
+	XCTAssertNil([[response objectForKey:@"headers"] objectForKey:@"Accept"],
+				 @"HTTP Header Keys are lowercase after processing");
 
 	[server stop];
 }
