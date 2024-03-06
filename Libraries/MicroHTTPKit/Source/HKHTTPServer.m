@@ -88,7 +88,8 @@ static enum MHD_Result accessHandler(void *cls, struct MHD_Connection *connectio
 			HKConnectionValuesFromBlock(
 				connection, MHD_HEADER_KIND,
 				^(__attribute__((unused)) enum MHD_ValueKind kind, NSString *key, NSString *value) {
-					[headers setObject:value forKey:key];
+					// HTTP Header Keys are Case-Insensitive
+					[headers setObject:value forKey:[key lowercaseString]];
 					return YES;
 				});
 			HKConnectionValuesFromBlock(
