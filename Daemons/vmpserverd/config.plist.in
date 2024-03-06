@@ -25,6 +25,14 @@
     <key>httpPort</key>
     <string>8080</string>
     <!--
+        Specify the username and password for
+        HTTP basic authorization here.
+    -->
+    <key>httpUsername</key>
+    <string>admin</string>
+    <key>httpPassword</key>
+    <string>password</string>
+    <!--
         Specify the mountpoints of the RTSP server here.
 
         A mountpoint consists of a path, type, and channel configuration.

@@ -22,6 +22,10 @@
 
 @property (nonatomic, strong) NSString *httpPort;
 
+@property (nonatomic, strong) NSString *httpUsername;
+
+@property (nonatomic, strong) NSString *httpPassword;
+
 @property (nonatomic, strong) NSArray<VMPConfigMountpointModel *> *mountpoints;
 
 @property (nonatomic, strong) NSArray<VMPConfigChannelModel *> *channels;

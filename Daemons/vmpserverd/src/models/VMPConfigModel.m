@@ -24,6 +24,8 @@
 		SET_PROPERTY(_rtspAddress, @"rtspAddress");
 		SET_PROPERTY(_rtspPort, @"rtspPort");
 		SET_PROPERTY(_httpPort, @"httpPort");
+		SET_PROPERTY(_httpUsername, @"httpUsername");
+		SET_PROPERTY(_httpPassword, @"httpPassword");
 
 		SET_PROPERTY(plistMountpoints, @"mountpoints");
 		SET_PROPERTY(plistChannels, @"channels");
@@ -84,6 +86,8 @@
 	VMP_ASSERT(_rtspAddress, @"rtspAddress is nil");
 	VMP_ASSERT(_rtspPort, @"rtspPort is nil");
 	VMP_ASSERT(_httpPort, @"httpPort is nil");
+	VMP_ASSERT(_httpUsername, @"httpUsername is nil");
+	VMP_ASSERT(_httpPassword, @"httpPassword is nil");
 	VMP_ASSERT(_mountpoints, @"mountpoints is nil");
 	VMP_ASSERT(_channels, @"channels is nil");
 
@@ -92,6 +96,8 @@
 		@"rtspAddress" : _rtspAddress,
 		@"rtspPort" : _rtspPort,
 		@"httpPort" : _httpPort,
+		@"httpUsername" : _httpUsername,
+		@"httpPassword" : _httpPassword,
 		@"mountpoints" : [self propertyListMountpoints],
 		@"channels" : [self propertyListChannels],
 	};
