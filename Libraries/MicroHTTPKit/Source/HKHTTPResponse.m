@@ -53,6 +53,16 @@
 	return [[self alloc] initWithJSONObject:JSONObject status:status error:error];
 }
 
++ (instancetype)responseWithJSONObject:(id)JSONObject
+								status:(NSUInteger)status
+							   headers:(NSDictionary<NSString *, NSString *> *)headers
+								 error:(NSError **)error {
+	NSData *data;
+	data = [NSJSONSerialization dataWithJSONObject:JSONObject options:0 error:error];
+
+	return [[self alloc] initWithData:data headers:headers status:status];
+}
+
 - (instancetype)initWithJSONObject:(id)JSONObject
 							status:(NSUInteger)status
 							 error:(NSError **)error {
