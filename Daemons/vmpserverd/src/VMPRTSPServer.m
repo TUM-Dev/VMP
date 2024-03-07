@@ -7,6 +7,7 @@
 #import <glib.h>
 #import <gst/rtsp-server/rtsp-server.h>
 
+#import "NSRunLoop+blockExecution.h"
 #import "NSString+substituteVariables.h"
 
 #import "VMPConfigChannelModel.h"
@@ -240,13 +241,41 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 		VMPWarn(@"Warning from element %s on channel %@: %s", source, channel, err->message);
 
 		g_error_free(err);
-		g_free(err);
+		g_free(debug);
 		break;
 	}
 	case GST_MESSAGE_EOS: {
 		VMPError(@"End of stream for channel %@", channel);
 
-		// TODO: We should always try to restart the pipeline
+		NSTimeInterval initialDelay = 1.0;
+		NSTimeInterval delayIncrement = 2.0;
+		NSTimeInterval maxDelay = 30.0;
+
+		[[NSRunLoop currentRunLoop]
+			 scheduleBlock:^BOOL {
+				 VMPInfo(@"Stopping pipeline mgr %@ for scheduled restart...", mgr);
+				 [mgr stop];
+
+				 // Stop if pipeline was started successfully, continue
+				 // with increasing delay otherwise
+				 VMPInfo(@"Trying to restart pipeline mgr %@...", mgr);
+
+				 // Interference with new bus messages is not possible due
+				 // the NSRunLoop processing events and timers serially on a single
+				 // thread.
+				 BOOL status = [mgr start];
+				 if (status) {
+					 VMPInfo(@"Restart of %@ Successful!", mgr);
+				 } else {
+					 VMPError(@"Could not restart %@. Retrying...", mgr);
+				 }
+
+				 return status;
+			 }
+			  initialDelay:initialDelay
+			delayIncrement:delayIncrement
+				  maxDelay:maxDelay];
+
 		break;
 	}
 	default:
@@ -256,7 +285,7 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 
 #pragma mark - Private methods
 
-// Iterate over the channelConfiguration array, create all pipeline managers acordingly, and
+// Iterate over the channelConfiguration array, create all pipeline managers accordingly, and
 // start them.
 - (BOOL)_startChannelPipelinesWithError:(NSError **)error {
 	NSArray *channels;
@@ -272,9 +301,9 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 		type = [channel type];
 		name = [channel name];
 		properties = [channel properties];
-		VMPInfo(@"Starting channel %@ of type %@", name, type);
 
 		if ([type isEqualToString:VMPConfigChannelTypeV4L2]) {
+			VMPInfo(@"Starting channel %@ of type %@", name, type);
 			NSString *device, *pipeline;
 			NSDictionary *vars;
 			VMPPipelineManager *manager;
@@ -286,6 +315,7 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 			}
 
 			vars = @{@"V4L2DEV" : device, @"VIDEOCHANNEL.0" : name};
+			VMPDebug(@"Substitution dictionary for v4l2 pipeline: %@", vars);
 
 			pipeline = [_currentProfile pipelineForChannelType:type variables:vars error:error];
 			if (!pipeline) {
@@ -309,6 +339,7 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 			NSDictionary *vars;
 			VMPPipelineManager *manager;
 
+			VMPInfo(@"Starting channel %@ of type %@", name, type);
 			width = properties[@"width"];
 			height = properties[@"height"];
 			if (!width || !height) {
