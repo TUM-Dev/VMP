@@ -8,6 +8,8 @@
 #include <gst/gst.h>
 #include <stdlib.h>
 
+#import <MicroHTTPKit/MicroHTTPKit.h>
+
 // Generated project configuration
 #include "../build/config.h"
 
@@ -40,6 +42,12 @@ int main(int argc, char *argv[]) {
 
 	// Tap into the GStreamer logging system
 	gst_debug_add_log_function(VMPGStreamerLoggingBridge, NULL, NULL);
+
+	// Use the vmpserverd journal for MicroHTTPKit
+	HKDefaultConnectionLogger = ^(HKHTTPRequest *r) {
+		VMPInfo(@"%@ %@ -- Headers: %@; Query: %@", [r method], [r URL], [r headers],
+				[r queryParameters]);
+	};
 
 	@autoreleasepool {
 		NSRunLoop *runLoop;
@@ -118,6 +126,9 @@ int main(int argc, char *argv[]) {
 			VMPCritical(@"Failed to create configuration from file %@: %@", selectedPath, error);
 			return EXIT_FAILURE;
 		}
+
+		// Update the GStreamer debug threshhold and clear old overwrites
+		gst_debug_set_threshold_from_string([[configuration gstDebug] UTF8String], TRUE);
 
 		// Create server
 		VMPServerMain *server = [VMPServerMain serverWithConfiguration:configuration
