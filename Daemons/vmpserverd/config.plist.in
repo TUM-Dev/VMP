@@ -100,7 +100,7 @@
         - The name is used to reference the channel in the mountpoints.
         - The type specifies the type of the channel.
         - The properties are specific to the channel type:
-            - "V4L2": device (required)
+            - "v4l2": device (required)
             - "ALSA": device (required)
             - "videoTest": width (required), height (required)
             - "audioTest": channels (required)
