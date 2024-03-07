@@ -28,6 +28,8 @@
 
 @property (nonatomic, strong) NSString *httpPassword;
 
+@property (nonatomic, strong) NSString *gstDebug;
+
 @property (nonatomic, strong) NSArray<VMPConfigMountpointModel *> *mountpoints;
 
 @property (nonatomic, strong) NSArray<VMPConfigChannelModel *> *channels;

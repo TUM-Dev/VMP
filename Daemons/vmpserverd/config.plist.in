@@ -18,6 +18,7 @@
     <string>0.0.0.0</string>
     <key>rtspPort</key>
     <string>8554</string>
+
     <!--
         Specify the port of the HTTP server here.
         We are currently listening to all interfaces.
@@ -34,6 +35,30 @@
     <string>admin</string>
     <key>httpPassword</key>
     <string>password</string>
+
+    <!--
+        GStreamer debug string.
+
+        Sets the debug logging wanted in the same form as with the GST_DEBUG environment
+        variable. You can use wildcards such as '*', but note that the order matters
+        when you use wild cards, e.g. "foosrc:6,src:3,:2" sets everything to log level 2.
+
+        0: None - No logs.
+        1: ERROR - Critical errors affecting actions.
+        2: WARNING - Possible non-fatal issues.
+        3: FIXME - Unfinished code paths.
+        4: INFO - Important rare events.
+        5: DEBUG - Limited occurrence events.
+        6: LOG - Frequent steady-state events.
+        7: TRACE - Very frequent events, like ref/unref cycles.
+        9: MEMDUMP - Hexdumps of data for in-depth debugging.
+    -->
+    <key>gstDebug</key>
+    <!--
+        We set everything to WARNING
+    -->
+    <string>*:2</string>
+
     <!--
         Specify the mountpoints of the RTSP server here.
 

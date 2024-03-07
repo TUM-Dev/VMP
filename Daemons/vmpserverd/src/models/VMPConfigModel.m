@@ -27,6 +27,7 @@
 		SET_PROPERTY(_httpAuth, @"httpAuth");
 		SET_PROPERTY(_httpUsername, @"httpUsername");
 		SET_PROPERTY(_httpPassword, @"httpPassword");
+		SET_PROPERTY(_gstDebug, @"gstDebug");
 
 		SET_PROPERTY(plistMountpoints, @"mountpoints");
 		SET_PROPERTY(plistChannels, @"channels");
@@ -90,6 +91,7 @@
 	VMP_ASSERT(_httpAuth, @"httpAuth is nil");
 	VMP_ASSERT(_httpUsername, @"httpUsername is nil");
 	VMP_ASSERT(_httpPassword, @"httpPassword is nil");
+	VMP_ASSERT(_gstDebug, @"gstDebug is nil");
 	VMP_ASSERT(_mountpoints, @"mountpoints is nil");
 	VMP_ASSERT(_channels, @"channels is nil");
 
@@ -100,6 +102,7 @@
 		@"httpPort" : _httpPort,
 		@"httpUsername" : _httpUsername,
 		@"httpPassword" : _httpPassword,
+		@"gstDebug" : _gstDebug,
 		@"mountpoints" : [self propertyListMountpoints],
 		@"channels" : [self propertyListChannels],
 	};
