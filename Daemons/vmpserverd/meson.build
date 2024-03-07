@@ -2,8 +2,6 @@ project('vmpserverd', ['objc', 'c'], version : '0.1.0')
 
 fs = import('fs')
 
-isNVJetson = false
-
 # Ensure clang is used for Objective-C
 objc_compiler = meson.get_compiler('objc')
 if objc_compiler.get_id() != 'clang'
