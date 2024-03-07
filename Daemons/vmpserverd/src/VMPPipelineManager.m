@@ -140,6 +140,7 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 		}
 		return NO;
 	}
+	[self setState:kVMPStatePlaying];
 
 	return YES;
 }
