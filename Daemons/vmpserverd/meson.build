@@ -30,9 +30,6 @@ systemd_dep = dependency('libsystemd')
 # HTTP server library for the REST API
 libmicrohttpkit_dep = dependency('microhttpkit')
 
-# Grand Central Dispatch (GCD) for concurrency management
-libdispatch_dep = dependency('libdispatch')
-
 # Objective-C (GNUstep) support from gnustep-config
 gnustep_config = find_program('gnustep-config', required: true)
 if not gnustep_config.found()
@@ -68,6 +65,7 @@ source = [
     'src/VMPErrors.m',
     'src/VMPJournal.m',
     'src/NSString+substituteVariables.m',
+    'src/NSRunLoop+blockExecution.m',
     # Models
     'src/models/VMPConfigChannelModel.m',
     'src/models/VMPConfigMountpointModel.m',
@@ -96,7 +94,6 @@ dependencies = [
     udev_dep,
     systemd_dep,
     libmicrohttpkit_dep,
-    libdispatch_dep,
 ]
 
  # Get version from project and split into major, minor, and patch
