@@ -58,7 +58,7 @@
         <key>channels</key>
         <dict>
             <key>v4l2</key>
-            <string>v4l2src device={V4L2DEV} ! videoconvert ! video/x-raw, width=1920, height=1080 ! intervideosink channel={VIDEOCHANNEL.0}</string>
+            <string>v4l2src device={V4L2DEV} ! videoconvertscale add-borders=1 ! video/x-raw, width=1920, height=1080 ! queue ! intervideosink channel={VIDEOCHANNEL.0}</string>
             <key>videoTest</key>
             <string>videotestsrc is-live=1 ! video/x-raw,width={WIDTH},height={HEIGHT} !
  intervideosink channel={VIDEOCHANNEL.0}</string>
