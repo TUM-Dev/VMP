@@ -28,6 +28,9 @@ systemd_dep = dependency('libsystemd')
 # HTTP server library for the REST API
 libmicrohttpkit_dep = dependency('microhttpkit')
 
+# libdispatch for recording scheduling
+libdispatch_dep = dependency('libdispatch')
+
 # Objective-C (GNUstep) support from gnustep-config
 gnustep_config = find_program('gnustep-config', required: true)
 if not gnustep_config.found()
@@ -92,6 +95,7 @@ dependencies = [
     udev_dep,
     systemd_dep,
     libmicrohttpkit_dep,
+    libdispatch_dep,
 ]
 
  # Get version from project and split into major, minor, and patch
