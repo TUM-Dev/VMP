@@ -4,38 +4,33 @@
  * SPDX-License-Identifier: MIT
  */
 
- #import "VMPRecordingManager.h"
+#import "VMPRecordingManager.h"
 
- NSString *const kVMPRecordingBitrate = @"recordingBitrate";
+NSString *const kVMPRecordingBitrate = @"recordingBitrate";
 
-@implementation VMPRecordingManager
-{
+@implementation VMPRecordingManager {
 	NSDate *_deadline;
 }
 
-+ (instancetype)recorderWithChannel: (NSString *)channel
-			 				   path: (NSURL *)path
-   					    recordUntil: (NSDate *) date
-						    options: (NSDictionary *)options 
-						   delegate: (id<VMPPipelineManagerDelegate>)delegate {
++ (instancetype)recorderWithChannel:(NSString *)channel
+							   path:(NSURL *)path
+						recordUntil:(NSDate *)date
+							options:(NSDictionary *)options
+						   delegate:(id<VMPPipelineManagerDelegate>)delegate {
 	return nil;
 }
 
-- (instancetype)initWithChannel: (NSString *)channel
-						   path: (NSURL *)path
-   					recordUntil: (NSDate *) date
-						options: (NSDictionary *)options
- 				   	   delegate: (id<VMPPipelineManagerDelegate>)delegate {
-	self = [super initWithLaunchArgs: @"" channel: channel delegate: delegate];
+- (instancetype)initWithChannel:(NSString *)channel
+						   path:(NSURL *)path
+					recordUntil:(NSDate *)date
+						options:(NSDictionary *)options
+					   delegate:(id<VMPPipelineManagerDelegate>)delegate {
+	self = [super initWithLaunchArgs:@"" channel:channel delegate:delegate];
 	return self;
-
 }
 
-- (BOOL) changeDeadline: (NSDate *)date {
-	return NO;
-}
 
-- (NSDate *) deadline {
+- (NSDate *)deadline {
 	return nil;
 }
 

@@ -18,7 +18,6 @@ extern NSString *const kVMPRecordingBitrate;
  */
 @interface VMPRecordingManager : VMPPipelineManager
 
-
 /**
  * Absolute destination path of recording.
  */
@@ -29,20 +28,21 @@ extern NSString *const kVMPRecordingBitrate;
  */
 @property (nonatomic, readonly) NSDictionary *options;
 
-+ (instancetype)recorderWithChannel: (NSString *)channel
-			 				   path: (NSURL *)path
-   					    recordUntil: (NSDate *) date
-						    options: (NSDictionary *)options
-					       delegate: (id<VMPPipelineManagerDelegate>)delegate;
 
-- (instancetype)initWithChannel: (NSString *)channel
-						   path: (NSURL *)path
-   					recordUntil: (NSDate *) date
-						options: (NSDictionary *)options
-					   delegate: (id<VMPPipelineManagerDelegate>)delegate NS_DESIGNATED_INITIALIZER;
+@property (atomic, assign) BOOL eosReceived;
 
-- (BOOL) changeDeadline: (NSDate *)date;
++ (instancetype)recorderWithChannel:(NSString *)channel
+							   path:(NSURL *)path
+						recordUntil:(NSDate *)date
+							options:(NSDictionary *)options
+						   delegate:(id<VMPPipelineManagerDelegate>)delegate;
 
-- (NSDate *) deadline;
+- (instancetype)initWithChannel:(NSString *)channel
+						   path:(NSURL *)path
+					recordUntil:(NSDate *)date
+						options:(NSDictionary *)options
+					   delegate:(id<VMPPipelineManagerDelegate>)delegate NS_DESIGNATED_INITIALIZER;
+
+- (NSDate *)deadline;
 
 @end
