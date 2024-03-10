@@ -178,6 +178,11 @@ extern NSString *const kVMPStatisticsNumberOfRestarts;
 - (BOOL)start;
 
 /**
+ * @brief Send EOS event to underlying pipeline
+ */
+- (void) sendEOSEvent;
+
+/**
  * @brief Stops the pipeline manager
  */
 - (void)stop;

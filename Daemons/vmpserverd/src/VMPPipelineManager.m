@@ -232,6 +232,15 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 	return YES;
 }
 
+- (void)sendEOSEvent {
+	if ([self pipeline] == NULL) {
+		return;
+	}
+
+	// Full Ownership transfer of eos event to function
+	gst_element_send_event(_pipeline, gst_event_new_eos());
+}
+
 - (void)stop {
 	if ([self pipeline] != NULL) {
 		gst_element_set_state([self pipeline], GST_STATE_NULL);
