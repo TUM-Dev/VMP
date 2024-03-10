@@ -60,6 +60,7 @@ source = [
     'src/VMPProfileManager.m',
     'src/VMPUdevClient.m',
     'src/VMPPipelineManager.m',
+    'src/VMPRecordingManager.m',
     'src/VMPErrors.m',
     'src/VMPJournal.m',
     'src/NSString+substituteVariables.m',
