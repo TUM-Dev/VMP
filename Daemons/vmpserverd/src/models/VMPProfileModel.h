@@ -54,6 +54,7 @@ extern NSString *const VMPProfilePlatformVAAPI;
 	Currently, the following platforms are supported:
 	- "all" - Most generic profile. Matches with all platforms.
 	- "deepstream-6" - Platform supporting Nvidia Deepstream
+	- "vaapi" - Platform with vaapi support
 
 	Nvidia Deepstream is a multimedia framework that supplies
 	GStreamer elements making use of Nvidia technologies,
@@ -66,6 +67,8 @@ extern NSString *const VMPProfilePlatformVAAPI;
 @property (nonatomic, strong) NSDictionary<NSString *, NSString *> *audioProviders;
 
 @property (nonatomic, strong) NSDictionary<NSString *, NSString *> *channels;
+
+@property (nonatomic, strong) NSDictionary<NSString *, NSString *> *recordings;
 
 /**
 	@brief Load a profile from a propertyList representation.

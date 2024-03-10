@@ -30,6 +30,7 @@ NSString *const VMPProfilePlatformVAAPI = @"vaapi";
 		SET_PROPERTY(_mountpoints, @"mountpoints");
 		SET_PROPERTY(_audioProviders, @"audioProviders");
 		SET_PROPERTY(_channels, @"channels");
+		SET_PROPERTY(_recordings, @"recordings");
 	}
 
 	return self;
@@ -44,6 +45,7 @@ NSString *const VMPProfilePlatformVAAPI = @"vaapi";
 	VMP_ASSERT(_mountpoints, @"mountpoints is nil");
 	VMP_ASSERT(_audioProviders, @"audioProviders is nil");
 	VMP_ASSERT(_channels, @"channels is nil");
+	VMP_ASSERT(_recordings, @"recordings is nil");
 
 	return @{
 		@"name" : _name,
@@ -53,7 +55,8 @@ NSString *const VMPProfilePlatformVAAPI = @"vaapi";
 		@"supportedPlatforms" : _supportedPlatforms,
 		@"mountpoints" : _mountpoints,
 		@"audioProviders" : _audioProviders,
-		@"channels" : _channels
+		@"channels" : _channels,
+		@"recordings" : _recordings
 	};
 }
 

@@ -44,6 +44,12 @@
         <key>mountpoints</key>
         <dict>
             <key>single</key>
+            <!--
+                intervideo{src,sink} is a mechanism to share buffers and events across independent
+                pipelines. We connect to the channel {VIDEOCHANNEL.0} and do the postprocessing
+                and h264 encoding on CPU (using libx264). The resulting h264 stream is then fed
+                into the rtp payloader.
+            -->
             <string>intervideosrc channel={VIDEOCHANNEL.0} ! queue ! videoconvert ! x264enc bitrate=2500 !
  rtph264pay name=pay0 pt=96</string>
             <key>combined</key>
@@ -69,6 +75,36 @@
             <string>pulsesrc device={PULSEDEV} ! voaacenc bitrate=96000 ! queue ! rtpmp4apay name=pay1 pt=97</string>
             <key>audioTest</key>
             <string>audiotestsrc ! voaacenc bitrate=96000 ! queue ! rtpmp4apay name=pay1 pt=97</string>
+        </dict>
+
+        <!--
+            Configuration for video and audio recording.  Partial (pipelines)
+            are used to describe device-dependent encoding and are pieced
+            together in a VMPRecordingManager.
+        -->
+        <key>recordings</key>
+        <dict>
+            <!--
+                Convert, Scale, and Encode a video channel feed into h264.
+
+                Variables:
+                - {VIDEOCHANNEL}: The video channel
+                - {WIDTH}: Width after scaling
+                - {HEIGHT}: Height after scaling
+                - {BITRATE}: h264 encoding bitrate in kbps
+            -->
+            <key>video</key>
+            <string>intervideosrc channel={VIDEOCHANNEL} ! queue !
+ videoconvertscale add-borders=1 ! video/x-raw, width={WIDTH}, height={HEIGHT} ! x264enc bitrate={BITRATE}</string>
+            <!--
+                Open a pulseaudio source and encode it as AAC LC.
+
+                Variables:
+                - {PULSEDEV}: PulseAudio Device (See `audioProviders` for detailed information)
+                - {BITRATE}: AAC Audio Bitrate (bits per second)
+            -->
+            <key>pulseAudio</key>
+            <string>pulsesrc device={PULSEDEV} ! voaacenc bitrate={BITRATE}</string>
         </dict>
     </dict>
 </plist>
