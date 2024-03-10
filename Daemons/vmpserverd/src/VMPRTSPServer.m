@@ -7,6 +7,8 @@
 #import <glib.h>
 #import <gst/rtsp-server/rtsp-server.h>
 
+#import <dispatch/dispatch.h>
+
 #import "NSRunLoop+blockExecution.h"
 #import "NSString+substituteVariables.h"
 
@@ -162,7 +164,11 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 	guint _serverSourceId;
 
 	NSMutableArray<VMPPipelineManager *> *_managedPipelines;
+	NSMutableArray<VMPRecordingManager *> *_activeRecordings;
 	NSMutableDictionary<NSString *, _VMPRTSPPipelineState *> *_rtspPipelineStates;
+
+	// Dispatch Queue for Recordings
+	dispatch_queue_t _recordingsQueue;
 }
 
 + (instancetype)serverWithConfiguration:(VMPConfigModel *)configuration
@@ -183,6 +189,7 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 		_currentProfile = profile;
 		_rtspPipelineStates =
 			[NSMutableDictionary dictionaryWithCapacity:[[_configuration mountpoints] count]];
+		_recordingsQueue = dispatch_queue_create("com.hugomelder.vmpserverd.recq", DISPATCH_QUEUE_SERIAL);
 
 		NSUInteger channelCount = [[_configuration channels] count];
 		_managedPipelines = [NSMutableArray arrayWithCapacity:channelCount];
@@ -212,11 +219,29 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 
 	channel = [mgr channel];
 	source = GST_OBJECT_NAME(message->src);
+	type = GST_MESSAGE_TYPE(message);
+
+	/*
+		This is a bit ugly, but we are using the same delegate to receive
+		events from the recording manager as well.
+
+		We only care about EOS events and do not want to restart recordings.
+	*/
+	if ([mgr isKindOfClass: [VMPRecordingManager class]]) {
+		VMPRecordingManager *rmgr = (VMPRecordingManager *)mgr;
+		VMPDebug(@"Received bus event of type %s from element %s. Recording: %@", GST_MESSAGE_TYPE_NAME(message), rmgr);
+
+		if (type == GST_MESSAGE_EOS) {
+			// Set the atomic property in the recording manager
+			[rmgr setEosReceived: YES];
+		}
+
+		return;
+	}
 
 	VMPDebug(@"Received bus event from element %s on channel %@: %s", source, channel,
 			 GST_MESSAGE_TYPE_NAME(message));
 
-	type = GST_MESSAGE_TYPE(message);
 	switch (type) {
 	case GST_MESSAGE_ERROR: {
 		GError *err;
@@ -635,6 +660,83 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 	g_source_remove(_serverSourceId);
 
 	return;
+}
+
+/*
+ * Recording scheduling involves coordination among the onBusEvent:manager:
+ * delegate, the RecordingManager, and a dispatch queue.
+ *
+ * When a recording is initiated and added to the active recordings array, a block
+ * is scheduled on _recordingsQueue to execute upon reaching the deadline.
+ *
+ * To finalize a recording properly, it's essential to flush all buffers and append
+ * necessary metadata, like queue points and indexes, to the file. Thankfully,
+ * GStreamer handles most of this process; our role is primarily to signal the end
+ * of the stream (EOS) to the GStreamer pipeline.
+ *
+ * However, before halting the pipeline, it's crucial to ensure the EOS message is
+ * acknowledged on the GStreamer Bus. Given that some GStreamer plugins might not
+ * properly propagate an EOS event, reliability isn't assured. The workaround is to
+ * implement a sensible timeout period.
+ *
+ * Within this context, the PipelineManagerDelegate implementation is designed to
+ * differentiate between standard pipeline operations and recording tasks. Upon
+ * receiving an EOS, the eosReceived flag within the recording manager is
+ * activated, indicating the completion of the recording process.
+ */
+- (BOOL)scheduleRecording:(VMPRecordingManager *)recording {
+	NSDate *deadline, *now;
+	NSTimeInterval interval;
+	dispatch_time_t dispatchTime;
+	
+	now = [NSDate date];
+	deadline = [recording deadline];
+	interval = [deadline timeIntervalSinceDate: now];
+
+	// Deadline is not in the future
+	if (interval < 0) {
+		return NO;
+	}
+
+	@synchronized(self) {
+        [_activeRecordings addObject:recording];
+    }
+
+	dispatchTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(interval * NSEC_PER_SEC));
+
+	VMPInfo(@"Starting Recording %@ at %@ for %ld seconds", recording, now, interval);
+	[recording start];
+
+	// Schedule end of recording at later date on the recordingsQueue
+	dispatch_after(dispatchTime, _recordingsQueue, ^{
+		VMPInfo(@"Scheduled end of recording %@. Sending EOS...", recording);
+		[recording sendEOSEvent];
+
+		// Wait until either EOS received or timeout
+	 	int timeout = 8; // Timeout after 8 seconds
+		while (![recording eosReceived] && timeout > 0) {
+			sleep(1);
+			timeout--;
+		}
+		if ([recording eosReceived]) {
+			VMPInfo(@"Received EOS for recording %@", recording);
+		} else {
+			VMPWarn(@"No EOS for recording received! File might be corrupt");
+		}
+
+		[recording stop];
+		VMPDebug(@"Recording %@ stopped", recording);
+
+		@synchronized(self) {
+			[_activeRecordings removeObject:recording];
+		}
+    });
+
+	return YES;
+}
+
+- (NSArray<VMPRecordingManager *> *)recordings {
+	return [_activeRecordings copy];
 }
 
 - (void)dealloc {

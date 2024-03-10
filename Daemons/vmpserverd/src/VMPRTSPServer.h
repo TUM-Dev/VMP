@@ -9,6 +9,7 @@
 
 #import "VMPPipelineManager.h"
 #import "VMPProfileManager.h"
+#import "VMPRecordingManager.h"
 #import "VMPServerMain.h"
 
 #import <gst/rtsp-server/rtsp-server.h>
@@ -29,12 +30,39 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * @brief Server configuration for configuring RTSP server
  */
-@property (readonly) VMPConfigModel *configuration;
+@property (nonatomic, readonly) VMPConfigModel *configuration;
 
 /**
  * @brief The current pipeline profile
  */
-@property (readonly) VMPProfileModel *currentProfile;
+@property (nonatomic, readonly) VMPProfileModel *currentProfile;
+
+/**
+ * @brief Provides global statistics for all managed pipelines and the RTSP server.
+ *
+ * This dictionary contains the aggregated statistics of all the pipelines being managed.
+ *
+ * Example structure of the returned dictionary:
+ * @code
+ * {
+ *     "managed_pipelines": [
+ *         {
+ *             "name": "pipeline0", // The unique name of the pipeline
+ *             "type": "v4l2", // The type of pipeline, e.g., 'v4l2' for video4linux2
+ *             "state": "playing", // Current state of the pipeline, e.g., 'playing', 'paused'
+ *             "numberOfRestarts": 2 // The number of times the pipeline has been restarted
+ *         }
+ *         // Additional pipeline dictionaries...
+ *     ]
+ * }
+ * @endcode
+ *
+ * The "managed_pipelines" array within the dictionary contains one dictionary for each
+ * managed pipeline.
+ *
+ * @return NSDictionary containing the global statistics of all managed pipelines and RTSP server.
+ */
+@property (nonatomic, readonly) NSDictionary *globalStatistics;
 
 /**
  * @brief RTSP server convenience initialiser
@@ -105,6 +133,22 @@ NS_ASSUME_NONNULL_BEGIN
  * You should not restart the server after calling this method.
  */
 - (void)stop;
+
+/**
+ * @brief Schedule a recording specified by a VMPRecording.
+ *
+ * Note that this method is MT-Safe by locking the internal
+ * array of recordings.
+ *
+ * @returns YES if the recording deadline is later than current time, NO
+ * otherwise.
+ */
+- (BOOL)scheduleRecording:(VMPRecordingManager *)recording;
+
+/**
+ * @brief Returns an array of all currently active recordings.
+ */
+- (NSArray<VMPRecordingManager *> *)recordings;
 
 @end
 
