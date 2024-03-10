@@ -21,6 +21,7 @@
 
 		SET_PROPERTY(_name, @"name");
 		SET_PROPERTY(_profileDirectory, @"profileDirectory");
+		SET_PROPERTY(_scratchDirectory, @"scratchDirectory");
 		SET_PROPERTY(_rtspAddress, @"rtspAddress");
 		SET_PROPERTY(_rtspPort, @"rtspPort");
 		SET_PROPERTY(_httpPort, @"httpPort");

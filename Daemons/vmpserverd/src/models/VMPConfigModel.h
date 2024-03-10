@@ -16,6 +16,8 @@
 
 @property (nonatomic, strong) NSString *profileDirectory;
 
+@property (nonatomic, strong) NSString *scratchDirectory;
+
 @property (nonatomic, strong) NSString *rtspAddress;
 
 @property (nonatomic, strong) NSString *rtspPort;

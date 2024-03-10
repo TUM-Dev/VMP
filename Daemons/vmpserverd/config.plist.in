@@ -11,6 +11,17 @@
     <string>@PROFILES_DIRECTORY@</string>
 
     <!--
+        Location of scratch directory for storing recordings.
+
+        You most likely want to have an automated cleanup mechanism to ensure
+        that enough space is available. This is NOT done by vmpserverd.
+
+        Default behaviour: Ignored if empty.
+    -->
+    <key>scratchDirectory</key>
+    <string></string>
+
+    <!--
         Specify the address and port of the RTSP server here.
         The rtspAddress is the IP address of the interface to bind to.
     -->
