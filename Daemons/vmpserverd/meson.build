@@ -79,7 +79,6 @@ include_dirs = include_directories(
 
 # Platform-specific profiles
 profiles = [
-    'profiles/com.hugomelder.deepstream6.plist',
     'profiles/com.hugomelder.software.plist',
     'profiles/com.hugomelder.vaapi.plist',
 ]
