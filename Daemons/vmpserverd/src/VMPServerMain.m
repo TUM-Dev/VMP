@@ -284,12 +284,150 @@
 	};
 }
 
+/*
+ * POST /api/v1/recording/create
+ *
+ * Example request body:
+ * {
+ *  "videoChannel": "present0",
+ *  "audioChannel": "audio0",
+ *  "stopAt": "2024-03-11T13:06:00Z"
+ * }
+ *
+ * Example response:
+ * {
+ *	"status": "ok",
+ *	"numberOfSeconds": 62.94332504272461,
+ *	"stopAt": "2024-03-11T13:06:00+0000",
+ *	"startAt": "2024-03-11T13:04:57+0000",
+ *	"path": "/tmp/recording_2024-03-11T13:04:57+0000.mkv"
+ * }
+ *
+ * TODO: Add option to schedule a recording at a later date
+ */
+- (HKHandlerBlock)_recordingCreateV1 {
+	return ^HKHTTPResponse *(HKHTTPRequest *request) {
+		id decodedBody;
+		NSError *error = nil;
+		NSMutableDictionary *recordingOptions;
+
+		// Check if scratchDirectory is set
+		if ([[_configuration scratchDirectory] length] == 0) {
+			NSDictionary *response = @{
+				@"error" : @"No scratch directory set",
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:500 error:NULL];
+		}
+
+		decodedBody = [NSJSONSerialization JSONObjectWithData:[request HTTPBody]
+													 options:0
+													   error:NULL];
+		if (!decodedBody) {
+			NSDictionary *response = @{
+				@"error" : @"Failed to decode JSON body",
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:400 error:NULL];
+		}
+
+		if (![decodedBody isKindOfClass:[NSDictionary class]]) {
+			NSDictionary *response = @{
+				@"error" : @"Invalid JSON body",
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:400 error:NULL];
+		}
+		recordingOptions = [decodedBody mutableCopy];
+
+		// Validate the body
+		NSString *videoChannel = recordingOptions[@"videoChannel"];
+		NSString *audioChannel = recordingOptions[@"audioChannel"];
+		NSString *stopAt = recordingOptions[@"stopAt"];
+
+		if (!videoChannel || !audioChannel || !stopAt) {
+			NSDictionary *response = @{
+				@"error" : @"Missing required parameters",
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:400 error:NULL];
+		}
+
+		NSDateFormatter *isoFormatter = [[NSDateFormatter alloc] init];
+		NSDate *stopAtDate;
+
+		[isoFormatter setDateFormat: @"yyyy-MM-dd'T'HH:mm:ssZ"];
+
+		stopAtDate = [isoFormatter dateFromString:stopAt];
+		if (!stopAtDate) {
+			NSDictionary *response = @{
+				@"error" : @"Invalid ISO8601 date in 'stopAt' value",
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:400 error:NULL];
+		}
+		
+		// Check if stop date is reasonable (not more then 8 hours in the future)
+		// TODO: Add option to define this in configuration
+		if ([stopAtDate timeIntervalSinceNow] > 8 * 60 * 60) {
+			NSDictionary *response = @{
+				@"error" : @"Stop date is too far in the future > 8 hours",
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:400 error:NULL];
+		}
+		
+		// Create a new recording with default options
+		// TODO: Allow for user to specify options
+		[recordingOptions addEntriesFromDictionary:@{
+			@"videoBitrate" : @2500,
+			@"audioBitrate" : @96,
+			@"scaledWidth" : @1920,
+			@"scaledHeight" : @1080
+		}];
+
+		NSURL *url;
+		NSDate *now;
+		VMPRecordingManager *recording;
+
+		now = [NSDate date];
+		url = [NSURL fileURLWithPathComponents:@[
+			[_configuration scratchDirectory],
+			[NSString stringWithFormat:@"recording_%@.mkv", [isoFormatter stringFromDate: now]]
+		]];
+
+		recording = [_rtspServer defaultRecordingWithOptions:recordingOptions
+											path:url
+										deadline:stopAtDate
+										   error:&error];
+		if (!recording) {
+			NSString *desc;
+
+			desc = [NSString stringWithFormat:@"Failed to create recording: %@", [error localizedDescription]];
+			NSDictionary *response = @{
+				@"error" : desc
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:500 error:NULL];
+		}
+
+		if (![_rtspServer scheduleRecording: recording]) {
+			NSDictionary *response = @{
+				@"error" : @"Failed to schedule recording"
+			};
+			return [HKHTTPJSONResponse responseWithJSONObject:response status:500 error:NULL];
+		}
+
+		return [HKHTTPJSONResponse responseWithJSONObject:@{
+			@"status" : @"ok",
+			@"path" : [url path],
+			@"startAt": [isoFormatter stringFromDate:now],
+			@"stopAt" : [isoFormatter stringFromDate:stopAtDate],
+			@"numberOfSeconds": @([stopAtDate timeIntervalSinceDate:now])
+		} status:200 error:NULL];
+	};
+}
+
 - (void)setupHTTPHandlers {
 	HKRouter *router;
 	HKRoute *statusRoute;
 	HKRoute *configRoute;
 	HKRoute *channelGraphRoute;
 	HKRoute *mountpointGraphRoute;
+	HKRoute *recordingCreateRoute;
 	HKHandlerBlock CORSHandler;
 
 	router = [_httpServer router];
@@ -321,11 +459,17 @@
 	mountpointGraphRoute = [HKRoute routeWithPath:@"/api/v1/mountpoint/graph"
 										   method:HKHTTPMethodGET
 										  handler:[self _mountpointGraphHandlerV1]];
+	// POST /api/v1/recording/create
+	recordingCreateRoute = [HKRoute routeWithPath:@"/api/v1/recording/create"
+											method:HKHTTPMethodPOST
+										   handler:[self _recordingCreateV1]];
+	
 
 	[router registerRoute:statusRoute withCORSHandler:CORSHandler];
 	[router registerRoute:configRoute withCORSHandler:CORSHandler];
 	[router registerRoute:channelGraphRoute withCORSHandler:CORSHandler];
 	[router registerRoute:mountpointGraphRoute withCORSHandler:CORSHandler];
+	[router registerRoute:recordingCreateRoute withCORSHandler:CORSHandler];
 }
 
 #pragma mark - Server Lifecycle
