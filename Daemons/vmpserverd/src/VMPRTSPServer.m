@@ -231,7 +231,7 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 	if ([mgr isKindOfClass:[VMPRecordingManager class]]) {
 		VMPRecordingManager *rmgr = (VMPRecordingManager *) mgr;
 		VMPDebug(@"Received bus event of type %s from element %s. Recording: %@",
-				 GST_MESSAGE_TYPE_NAME(message), rmgr);
+				 GST_MESSAGE_TYPE_NAME(message), source, rmgr);
 
 		if (type == GST_MESSAGE_EOS) {
 			// Set the atomic property in the recording manager
@@ -758,7 +758,7 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 	}
 
 	pipeline = [template mutableCopy];
-	[pipeline appendFormat: @" ! matroskamux name=mux !	filesink location=%@ ", path];
+	[pipeline appendFormat: @" ! matroskamux name=mux !	filesink location=%@ ", [path path]];
 
 	template = [_currentProfile recordings][@"pulse"];
 	if (!template) {
