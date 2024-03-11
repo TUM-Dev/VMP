@@ -137,7 +137,7 @@
         - The type specifies the type of the channel.
         - The properties are specific to the channel type:
             - "v4l2": device (required)
-            - "ALSA": device (required)
+            - "pulse": device (required)
             - "videoTest": width (required), height (required)
             - "audioTest": channels (required)
             - (experimental) "custom": gstLaunchDescription (required)
