@@ -75,6 +75,10 @@ static enum MHD_Result accessHandler(void *cls, struct MHD_Connection *connectio
 
 		server = (__bridge HKHTTPServer *) cls;
 
+		// Log all arguments with nslog
+		NSLog(@"Received request for method %s; URL %s; %lu bytes of upload data", method, url,
+			  *upload_data_size);
+
 		if (*con_cls == NULL) {
 			NSString *urlString;
 			NSString *methodString;
@@ -112,6 +116,8 @@ static enum MHD_Result accessHandler(void *cls, struct MHD_Connection *connectio
 			// This is a __bridge_retained cast, so we need to release the object later on
 			*con_cls = (__bridge_retained void *) (request);
 			HKDefaultConnectionLogger(request);
+
+			return MHD_YES;
 		} else {
 			// This is a subsequent call for this request, so we need to retrieve the request
 			// object from the connection class

@@ -126,8 +126,7 @@ static const NSString *RESPONSE_STRING = @"Received!";
 														 encoding:NSUTF8StringEncoding];
 
 				  XCTAssertNotNil(data, @"Body data is valid");
-				  // FIXME: We need to implement a post-processor in HKHTTPServer.m for the body
-				  // data to be correctly passed
+				  XCTAssertEqualObjects(body, REQUEST_BODY_STRING, @"Body data is valid");
 
 				  return [HKHTTPResponse
 					  responseWithData:[RESPONSE_STRING dataUsingEncoding:NSUTF8StringEncoding]
