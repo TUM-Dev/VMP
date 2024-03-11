@@ -6,32 +6,38 @@
 
 #import "VMPRecordingManager.h"
 
-NSString *const kVMPRecordingBitrate = @"recordingBitrate";
-
 @implementation VMPRecordingManager {
 	NSDate *_deadline;
 }
 
-+ (instancetype)recorderWithChannel:(NSString *)channel
-							   path:(NSURL *)path
-						recordUntil:(NSDate *)date
-							options:(NSDictionary *)options
-						   delegate:(id<VMPPipelineManagerDelegate>)delegate {
-	return nil;
++ (instancetype)recorderWithLaunchArgs:(NSString *)launchArgs
+								  path:(NSURL *)path
+						   recordUntil:(NSDate *)date
+							  delegate:(id<VMPPipelineManagerDelegate>)delegate {
+	return [[VMPRecordingManager alloc] initWithLaunchArgs:launchArgs
+													  path:path
+											   recordUntil:date
+												  delegate:delegate];
 }
 
-- (instancetype)initWithChannel:(NSString *)channel
-						   path:(NSURL *)path
-					recordUntil:(NSDate *)date
-						options:(NSDictionary *)options
-					   delegate:(id<VMPPipelineManagerDelegate>)delegate {
-	self = [super initWithLaunchArgs:@"" channel:channel delegate:delegate];
+- (instancetype)initWithLaunchArgs:(NSString *)launchArgs
+							  path:(NSURL *)p
+					   recordUntil:(NSDate *)date
+						  delegate:(id<VMPPipelineManagerDelegate>)delegate {
+	NSString *pseudoChannel;
+
+	pseudoChannel = [@"_recording_" stringByAppendingString:[p path]];
+	self = [super initWithLaunchArgs:launchArgs channel:pseudoChannel delegate:delegate];
+	if (self) {
+		_path = [p copy];
+		_deadline = [date copy];
+	}
+
 	return self;
 }
 
-
 - (NSDate *)deadline {
-	return nil;
+	return _deadline;
 }
 
 @end

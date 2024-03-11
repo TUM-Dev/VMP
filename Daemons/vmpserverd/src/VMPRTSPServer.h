@@ -120,19 +120,26 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (NSArray<NSDictionary *> *)channelInfo;
 
-/**
- * @brief Start the RTSP server
- *
- * @returns YES if the server was started successfully, NO otherwise.
- */
-- (BOOL)startWithError:(NSError **)error;
+#pragma mark - Recording
 
 /**
- * @brief Stop the RTSP server
+ * @brief Create a new RecordingManager instance
  *
- * You should not restart the server after calling this method.
+ * The defined channels from the vmpserverd configuration are
+ * used to construct a new RecordingManager instance.
+ *
+ * Available Keys for Options:
+ * - "videoChannel" (REQUIRED)
+ * - "audioChannel" (REQUIRED)
+ * - "videoBitrate" (OPTIONAL, in bbps. Default is 2500kbps)
+ * - "audioBitrate" (OPTIONAL, in kbps. Default is 96kbps)
+ * - "scaledWidth"  (OPTIONAL)
+ * - "scaledHeight" (OPTIONAL)
  */
-- (void)stop;
+- (VMPRecordingManager *)defaultRecordingWithOptions:(NSDictionary *)options
+												path:(NSURL *)path
+											deadline: (NSDate *)date
+											   error: (NSError **) error;
 
 /**
  * @brief Schedule a recording specified by a VMPRecording.
@@ -149,6 +156,22 @@ NS_ASSUME_NONNULL_BEGIN
  * @brief Returns an array of all currently active recordings.
  */
 - (NSArray<VMPRecordingManager *> *)recordings;
+
+#pragma mark - Lifecycle
+
+/**
+ * @brief Start the RTSP server
+ *
+ * @returns YES if the server was started successfully, NO otherwise.
+ */
+- (BOOL)startWithError:(NSError **)error;
+
+/**
+ * @brief Stop the RTSP server
+ *
+ * You should not restart the server after calling this method.
+ */
+- (void)stop;
 
 @end
 

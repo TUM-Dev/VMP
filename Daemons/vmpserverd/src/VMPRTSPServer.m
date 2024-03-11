@@ -189,7 +189,8 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 		_currentProfile = profile;
 		_rtspPipelineStates =
 			[NSMutableDictionary dictionaryWithCapacity:[[_configuration mountpoints] count]];
-		_recordingsQueue = dispatch_queue_create("com.hugomelder.vmpserverd.recq", DISPATCH_QUEUE_SERIAL);
+		_recordingsQueue =
+			dispatch_queue_create("com.hugomelder.vmpserverd.recq", DISPATCH_QUEUE_SERIAL);
 
 		NSUInteger channelCount = [[_configuration channels] count];
 		_managedPipelines = [NSMutableArray arrayWithCapacity:channelCount];
@@ -227,13 +228,14 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 
 		We only care about EOS events and do not want to restart recordings.
 	*/
-	if ([mgr isKindOfClass: [VMPRecordingManager class]]) {
-		VMPRecordingManager *rmgr = (VMPRecordingManager *)mgr;
-		VMPDebug(@"Received bus event of type %s from element %s. Recording: %@", GST_MESSAGE_TYPE_NAME(message), rmgr);
+	if ([mgr isKindOfClass:[VMPRecordingManager class]]) {
+		VMPRecordingManager *rmgr = (VMPRecordingManager *) mgr;
+		VMPDebug(@"Received bus event of type %s from element %s. Recording: %@",
+				 GST_MESSAGE_TYPE_NAME(message), rmgr);
 
 		if (type == GST_MESSAGE_EOS) {
 			// Set the atomic property in the recording manager
-			[rmgr setEosReceived: YES];
+			[rmgr setEosReceived:YES];
 		}
 
 		return;
@@ -662,6 +664,131 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 	return;
 }
 
+- (VMPRecordingManager *)defaultRecordingWithOptions:(NSDictionary *)options
+												path:(NSURL *)path
+											deadline: (NSDate *)date
+											   error: (NSError **) error {
+	NSString *videoChannel = nil;
+	NSString *audioChannel = nil;
+	NSString *pulseDevice  = nil;
+	NSNumber *videoBitrate = nil;
+	NSNumber *audioBitrate = nil;
+	NSNumber *width = nil;
+	NSNumber *height = nil;
+	VMPConfigChannelModel *video = nil;
+	VMPConfigChannelModel *audio = nil;
+
+	videoChannel = options[@"videoChannel"];
+	audioChannel = options[@"audioChannel"];
+
+	if (!videoChannel || !audioChannel) {
+		CONFIG_ERROR(error, @"'videoChannel' or 'audioChannel' key not present in options");
+		return nil;
+	}
+
+	for (VMPConfigChannelModel *cur in [_configuration channels]) {
+		if ([[cur name] isEqualToString:videoChannel]) {
+			video = cur;
+		} else if ([[cur name] isEqualToString:audioChannel]) {
+			audio = cur;
+		}
+	}
+
+	if (!video || !audio) {
+		CONFIG_ERROR(error, @"'videoChannel' or 'audioChannel' key missing in options dictionary and not defined in channel config");
+		return nil;
+	}
+
+	if (![[audio type] isEqualToString: VMPConfigChannelTypePulseAudio]) {
+		CONFIG_ERROR(error, @"Currently, only audio channels of type 'pulse' are supported");
+		return nil;
+	}
+
+	videoBitrate = options[@"videoBitrate"];
+	if (!videoBitrate) {
+		videoBitrate = @2500;
+	}
+	audioBitrate = options[@"audioBitrate"];
+	if (!audioBitrate) {
+		audioBitrate = @96;
+	}
+	// Convert to bits per second
+	audioBitrate = [NSNumber numberWithUnsignedLong:[audioBitrate unsignedLongValue] * 1000];
+
+	pulseDevice = [audio properties][@"device"];
+	if (!pulseDevice) {
+		CONFIG_ERROR(error, @"'device' key missing in audio channel configuration");
+		return nil;
+	}
+
+	width = options[@"width"];
+	height = options[@"height"];
+	// Try to use channel presets
+	if (!width || !height) {
+		width = [video properties][@"width"];
+		height = [video properties][@"height"];
+	}
+
+	// Give up
+	if (!width || !height) {
+		CONFIG_ERROR(error, @"'width' or 'height' not in options nor in channel properties");
+		return nil;
+	}
+
+	NSDictionary<NSString *, NSString *> *vars;
+	NSString *template;
+	NSMutableString *pipeline;
+
+	template = [_currentProfile recordings][@"video"];
+	if (!template) {
+		CONFIG_ERROR(error, @"'video' key not present in 'recordings' profile");
+		return nil;
+	}
+
+	// Substitution dictionary for video pipeline
+	vars = @{
+		@"VIDEOCHANNEL" : videoChannel,
+		@"WIDTH": [width stringValue],
+		@"HEIGHT": [height stringValue],
+		@"BITRATE": [videoBitrate stringValue]
+	};
+	template = [template stringBySubstitutingVariables: vars error: error];
+	if (!template) {
+		return nil;
+	}
+
+	pipeline = [template mutableCopy];
+	[pipeline appendFormat: @" ! matroskamux name=mux !	filesink location=%@ ", path];
+
+	template = [_currentProfile recordings][@"pulse"];
+	if (!template) {
+		CONFIG_ERROR(error, @"'pulse' key not present in 'recordings' profile");
+		return nil;
+	}
+
+	// Substitution directory for audio pipeline
+	vars = @{
+		@"PULSEDEV": pulseDevice,
+		@"BITRATE": [audioBitrate stringValue]
+	};
+	template = [template stringBySubstitutingVariables: vars error: error];
+	if (!template) {
+		return nil;
+	}
+
+	[pipeline appendString: template];
+	[pipeline appendString: @" ! mux."];
+
+	/* pipeline now contains a full GStreamer pipeline for encoding
+	   and writing out a matroska file to path.
+
+	   <VIDEO_PIPELINE> ! matroskamux name=mux ! \
+	   filesink location=<PATH> <AUDIO_PIPELINE> ! mux. -e
+	*/
+
+	return [VMPRecordingManager recorderWithLaunchArgs: pipeline path: path recordUntil: date delegate: self];
+}
+
 /*
  * Recording scheduling involves coordination among the onBusEvent:manager:
  * delegate, the RecordingManager, and a dispatch queue.
@@ -688,10 +815,10 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 	NSDate *deadline, *now;
 	NSTimeInterval interval;
 	dispatch_time_t dispatchTime;
-	
+
 	now = [NSDate date];
 	deadline = [recording deadline];
-	interval = [deadline timeIntervalSinceDate: now];
+	interval = [deadline timeIntervalSinceDate:now];
 
 	// Deadline is not in the future
 	if (interval < 0) {
@@ -699,10 +826,10 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 	}
 
 	@synchronized(self) {
-        [_activeRecordings addObject:recording];
-    }
+		[_activeRecordings addObject:recording];
+	}
 
-	dispatchTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(interval * NSEC_PER_SEC));
+	dispatchTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t) (interval * NSEC_PER_SEC));
 
 	VMPInfo(@"Starting Recording %@ at %@ for %ld seconds", recording, now, interval);
 	[recording start];
@@ -713,7 +840,7 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 		[recording sendEOSEvent];
 
 		// Wait until either EOS received or timeout
-	 	int timeout = 8; // Timeout after 8 seconds
+		int timeout = 8; // Timeout after 8 seconds
 		while (![recording eosReceived] && timeout > 0) {
 			sleep(1);
 			timeout--;
@@ -730,7 +857,7 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 		@synchronized(self) {
 			[_activeRecordings removeObject:recording];
 		}
-    });
+	});
 
 	return YES;
 }

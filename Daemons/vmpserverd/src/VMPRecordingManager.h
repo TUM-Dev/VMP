@@ -6,13 +6,10 @@
 
 #import "VMPPipelineManager.h"
 
-/// The encoding bitrate
-extern NSString *const kVMPRecordingBitrate;
-
 /**
  * @brief Recording Manager
  *
- * A subclass of th pipeline manager that
+ * A subclass of the pipeline manager that
  * has extensions for recording to a
  * file.
  */
@@ -28,20 +25,18 @@ extern NSString *const kVMPRecordingBitrate;
  */
 @property (nonatomic, readonly) NSDictionary *options;
 
-
 @property (atomic, assign) BOOL eosReceived;
 
-+ (instancetype)recorderWithChannel:(NSString *)channel
-							   path:(NSURL *)path
-						recordUntil:(NSDate *)date
-							options:(NSDictionary *)options
-						   delegate:(id<VMPPipelineManagerDelegate>)delegate;
++ (instancetype)recorderWithLaunchArgs:(NSString *)launchArgs
+								  path:(NSURL *)path
+						   recordUntil:(NSDate *)date
+							  delegate:(id<VMPPipelineManagerDelegate>)delegate;
 
-- (instancetype)initWithChannel:(NSString *)channel
-						   path:(NSURL *)path
-					recordUntil:(NSDate *)date
-						options:(NSDictionary *)options
-					   delegate:(id<VMPPipelineManagerDelegate>)delegate NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithLaunchArgs:(NSString *)launchArgs
+							  path:(NSURL *)path
+					   recordUntil:(NSDate *)date
+						  delegate:(id<VMPPipelineManagerDelegate>)delegate
+	NS_DESIGNATED_INITIALIZER;
 
 - (NSDate *)deadline;
 
