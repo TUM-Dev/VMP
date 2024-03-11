@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
 		NSError *error;
 		NSArray<NSString *> *paths = DEFAULT_PATHS;
 		NSDictionary *plist;
+		NSTimeZone *tz;
 		VMPConfigModel *configuration;
 
 		// Force platform is nullable
@@ -98,6 +99,10 @@ int main(int argc, char *argv[]) {
 				return EXIT_FAILURE;
 			}
 		}
+
+		// Set TimeZone to GMT
+		tz = [NSTimeZone timeZoneWithName: @"GMT"];
+    	[NSTimeZone setDefaultTimeZone: tz];
 
 		runLoop = [NSRunLoop currentRunLoop];
 
