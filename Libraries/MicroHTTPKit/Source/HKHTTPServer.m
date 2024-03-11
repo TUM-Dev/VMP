@@ -75,10 +75,6 @@ static enum MHD_Result accessHandler(void *cls, struct MHD_Connection *connectio
 
 		server = (__bridge HKHTTPServer *) cls;
 
-		// Log all arguments with nslog
-		NSLog(@"Received request for method %s; URL %s; %lu bytes of upload data", method, url,
-			  *upload_data_size);
-
 		if (*con_cls == NULL) {
 			NSString *urlString;
 			NSString *methodString;
