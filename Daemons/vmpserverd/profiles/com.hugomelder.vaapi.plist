@@ -140,7 +140,7 @@
                 - {PULSEDEV}: PulseAudio Device (See `audioProviders` for detailed information)
                 - {BITRATE}: AAC Audio Bitrate (bits per second)
             -->
-            <key>pulseAudio</key>
+            <key>pulse</key>
             <string>pulsesrc device={PULSEDEV} ! voaacenc bitrate={BITRATE}</string>
         </dict>
     </dict>
