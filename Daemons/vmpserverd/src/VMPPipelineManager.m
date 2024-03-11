@@ -260,7 +260,10 @@ static gboolean gstreamer_bus_cb(GstBus *bus, GstMessage *message, void *mgr) {
 - (void)dealloc {
 	// If not already unreferenced by stop, unreference pipeline
 	// gst_object_unref handles NULL pointers
-	gst_object_unref(_pipeline);
+	if (_pipeline != NULL) {
+		gst_object_unref(_pipeline);
+	}
+	VMPDebug(@"Deallocating pipeline manager for channel %@", _channel);
 }
 
 @end
