@@ -1,5 +1,3 @@
-xctest_dep = dependency('XCTest', required: true)
-
 common_objc_args = '-Wno-gnu'
 common_dependencies = [xctest_dep]
 common_link_with = [calendarkit_lib]

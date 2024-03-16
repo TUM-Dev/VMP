@@ -78,4 +78,11 @@ pkg.generate(libraries : calendarkit_lib,
              description : 'An iCalendar RFC 5545 library for Objective-C',
 )
 
-subdir('Tests')
+# Testing
+xctest_dep = dependency('XCTest', required: false)
+
+if xctest_dep.found()
+  subdir('Tests')
+else
+  message('XCTest not found. Skipping unit tests.')
+endif
