@@ -30,6 +30,8 @@ that are not in the nix-pkgs upstream, we provide an overlay which adds the miss
 Run `nix-shell` in the repository root to fetch all dependencies required for
 development. After this, you can develop and build all subprojects.
 
+A Debian rootfs build script with the complete VMP stack installed can be found in the `Deployment` folder. By default, a squashfs image is created.
+
 See the [vmpserverd](Daemons/vmpserverd/README.md) README for more information about the daemon.
 
 ## License
