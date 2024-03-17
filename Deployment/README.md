@@ -12,6 +12,8 @@ to create a tarball by adding `"tarball_type": "tar.gz"` to the JSON configurati
 Obtain the `rootfsbuilder` tool by building it from source. More
 information about the tool and the build process can be found in the
 projects README.
+
+Change the default password of the root and vmp user in `payload/root/post-install.sh`.
 After that, run the following command to build the root filesystem:
 
 ```bash

@@ -8,6 +8,10 @@ LIBOBJC2_TAG="v${LIBOBJC_VERSION}"
 GNUSTEP_MAKE_TAG="make-2_9_1"
 GNUSTEP_BASE_TAG="base-1_29_0"
 
+# Account
+ROOT_PASSWORD="root" # Change this
+VMP_PASSWORD="vmp" # Change this
+
 NATIVE_ARCH="$(dpkg --print-architecture)"
 
 if [ "${NATIVE_ARCH}" = "arm64" ]; then
@@ -40,6 +44,14 @@ update-locale LANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8 LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
 export LANGUAGE=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
+
+echo "* Creating Accounts..."
+# Create new user with USERNAME and PASSWORD and add to sudo
+useradd -m -s /bin/bash -G sudo "vmp"
+echo "vmp:${VMP_PASSWORD}" | chpasswd
+
+# Set root password
+echo "root:${ROOT_PASSWORD}" | chpasswd
 
 # Compiler Flags
 export CC=clang
@@ -369,5 +381,7 @@ echo "* Cleaning up..."
 apt remove -y cmake meson clang lld git ninja-build make pkg-config autotools-dev
 apt autoremove -y
 apt clean -y
+
+rm -f /root/post-install.sh
 
 echo "* Finished RootFS setup. Exiting..."

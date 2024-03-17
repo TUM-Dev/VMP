@@ -3,7 +3,7 @@
 	"name": "VMP OS",
 	"distribution": "debian",
 	"release": "bookworm",
-	"architecture": "arm64",
+	"architecture": "amd64",
 	"variant": "minbase",
 	"mirror": "http://deb.debian.org/debian/",
 	"squashfs": true,
