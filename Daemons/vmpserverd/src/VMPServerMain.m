@@ -13,7 +13,59 @@
 #import "VMPRTSPServer.h"
 #import "VMPServerMain.h"
 
+#include <graphviz/gvc.h>
+#include <graphviz/cgraph.h>
+
 #include "config.h"
+
+// Convert a DOT graph to SVG
+static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
+	NSData *svgData;
+    GVC_t *gvc;
+	Agraph_t *g;
+    char *rendered;
+    unsigned int length;
+	
+	// Initialize Graphviz context
+	gvc = gvContext();
+	if (!gvc) {
+		VMP_FAST_ERROR(error, VMPErrorCodeGraphvizError, @"Failed to initialize Graphviz context");
+		return nil;
+	}
+
+	// Create a graph from the DOT data
+	g = agmemread((char *)[dotData bytes]);
+	if (!g) {
+		VMP_FAST_ERROR(error, VMPErrorCodeGraphvizError, @"Failed to create graph from DOT data");
+		gvFreeContext(gvc);
+		return nil;
+	}
+
+	if (gvLayout(gvc, g, "dot") != 0) {
+		VMP_FAST_ERROR(error, VMPErrorCodeGraphvizError, @"Failed to layout graph");
+		agclose(g);
+		gvFreeContext(gvc);
+		return nil;
+	}
+
+	if (gvRenderData(gvc, g, "svg", &rendered, &length) != 0) {
+		VMP_FAST_ERROR(error, VMPErrorCodeGraphvizError, @"Failed to render graph to SVG");
+		gvFreeLayout(gvc, g);
+		agclose(g);
+		gvFreeContext(gvc);
+		return nil;
+	}
+
+	svgData = [NSData dataWithBytes:rendered length:length];
+
+    // Clean up
+    gvFreeRenderData(rendered);
+    gvFreeLayout(gvc, g);
+    agclose(g);
+    gvFreeContext(gvc);
+
+	return svgData;
+}
 
 @implementation VMPServerMain {
 	VMPRTSPServer *_rtspServer;
@@ -223,10 +275,13 @@
 - (HKHandlerBlock)_channelGraphHandlerV1 {
 	return ^HKHTTPResponse *(HKHTTPRequest *request) {
 		NSString *channel;
+		NSString *format;
+		NSData *pipelineDot;
 		NSDictionary *headers;
 		VMPPipelineManager *mgr;
 
 		channel = [request queryParameters][@"channel"];
+		format = [request queryParameters][@"format"];
 
 		if (!channel) {
 			NSDictionary *response = @{
@@ -234,6 +289,10 @@
 			};
 			return [HKHTTPJSONResponse responseWithJSONObject:response status:400 error:NULL];
 		}
+		if (!format) {
+			format = @"svg";
+		}
+		format = [format lowercaseString];
 
 		mgr = [_rtspServer pipelineManagerForChannel:channel];
 		if (!mgr) {
@@ -243,13 +302,37 @@
 			return [HKHTTPJSONResponse responseWithJSONObject:response status:404 error:NULL];
 		}
 
-		headers = @{
-			@"Content-Type" : @"text/plain",
-		};
+		pipelineDot = [mgr pipelineDotGraph];
 
-		return [[HKHTTPResponse alloc] initWithData:[mgr pipelineDotGraph]
-											headers:headers
-											 status:200];
+		if ([format isEqualToString:@"svg"]) {
+			NSError *error;
+			NSData *svgData;
+
+			svgData = convertDOTtoSVG(pipelineDot, &error);
+			if (!svgData) {
+				NSDictionary *response = @{
+					@"error" : [error localizedDescription],
+				};
+				return [HKHTTPJSONResponse responseWithJSONObject:response status:500 error:NULL];
+			}
+
+			headers = @{
+				@"Content-Type" : @"image/svg+xml",
+			};
+
+			return [[HKHTTPResponse alloc] initWithData:svgData headers:headers status:200];
+		} else if ([format isEqualToString:@"dot"]) {
+			headers = @{
+				@"Content-Type" : @"text/plain",
+			};
+
+			return [[HKHTTPResponse alloc] initWithData:pipelineDot headers:headers status:200];
+		}
+
+		NSDictionary *response = @{
+			@"error" : @"Invalid format parameter",
+		};
+		return [HKHTTPJSONResponse responseWithJSONObject:response status:400 error:NULL];
 	};
 }
 

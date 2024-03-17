@@ -42,12 +42,17 @@ Currently the following dependencies are required:
 - gstreamer plugins libav (for aac encoding)
 - udev
 - libsystemd (for writing to the systemd journal)
-- MicroHTTPKit (https://github.com/hmelder/MicroHTTPKit)
+- graphviz (for creating svg pipeline graphs)
+- vainfo (optional: for hardware acceleration probing)
+- MicroHTTPKit (See Libraries/MicroHTTPKit)
 - A working GNUstep Objective-C 2.0 toolchain
 
 Additionally, meson is required for building.
 
-TODO: Add instructions for installing dependencies.
+See `Deployment/payload/root/post-install.sh` for a complete script for building
+the GNUstep toolchain, and the dependencies on Debian.
+Alternatively, you can take a look at `shell.nix` for a NixOS shell environment
+(primarly for development purposes).
 
 #### Building the daemon
 

@@ -36,13 +36,11 @@ pkgs.mkShell {
     pkgs.meson
     pkgs.pkg-config
     pkgs.ninja
-    pkgs.libsoup_3
-    pkgs.libsoup_3.dev
-    pkgs.alsa-lib
-    pkgs.alsa-lib.dev
 
     # vaapi (vainfo)
     pkgs.libva-utils
+
+    pkgs.graphviz
 
     pkgs.udev
     pkgs.udev.dev

@@ -41,5 +41,6 @@ typedef NS_ENUM(NSInteger, VMPErrorCode) {
 	/// Server initialisation error. Used in VMPServerMain.
 	VMPErrorCodeServerInitError = 10,
 	/// Property list parsing error.
-	VMPErrorCodePropertyListError = 11
+	VMPErrorCodePropertyListError = 11,
+	VMPErrorCodeGraphvizError = 12
 };

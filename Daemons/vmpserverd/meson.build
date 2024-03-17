@@ -31,6 +31,10 @@ libmicrohttpkit_dep = dependency('microhttpkit')
 # libdispatch for recording scheduling
 libdispatch_dep = dependency('libdispatch')
 
+# libgvc and libcgraph for rendering an svg from DOT graphs
+libgvc_dep = dependency('libgvc')
+libcgraph_dep = dependency('libcgraph')
+
 # Objective-C (GNUstep) support from gnustep-config
 gnustep_config = find_program('gnustep-config', required: true)
 if not gnustep_config.found()
@@ -96,6 +100,8 @@ dependencies = [
     systemd_dep,
     libmicrohttpkit_dep,
     libdispatch_dep,
+    libcgraph_dep,
+    libgvc_dep,
 ]
 
  # Get version from project and split into major, minor, and patch
