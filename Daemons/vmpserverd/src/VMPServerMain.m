@@ -339,10 +339,12 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 - (HKHandlerBlock)_mountpointGraphHandlerV1 {
 	return ^HKHTTPResponse *(HKHTTPRequest *request) {
 		NSString *mountpoint;
+		NSString *format;
 		NSDictionary *headers;
 		NSData *data;
 
 		mountpoint = [request queryParameters][@"mountpoint"];
+		format = [request queryParameters][@"format"];
 
 		if (!mountpoint) {
 			NSDictionary *response = @{
@@ -350,6 +352,10 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 			};
 			return [HKHTTPJSONResponse responseWithJSONObject:response status:400 error:NULL];
 		}
+		if (!format) {
+			format = @"svg";
+		}
+		format = [format lowercaseString];
 
 		data = [_rtspServer dotGraphForMountPointName:mountpoint];
 		if (!data) {
@@ -359,11 +365,35 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 			return [HKHTTPJSONResponse responseWithJSONObject:response status:404 error:NULL];
 		}
 
-		headers = @{
-			@"Content-Type" : @"text/plain",
-		};
+		if ([format isEqualToString:@"svg"]) {
+			NSError *error;
+			NSData *svgData;
 
-		return [[HKHTTPResponse alloc] initWithData:data headers:headers status:200];
+			svgData = convertDOTtoSVG(data, &error);
+			if (!svgData) {
+				NSDictionary *response = @{
+					@"error" : [error localizedDescription],
+				};
+				return [HKHTTPJSONResponse responseWithJSONObject:response status:500 error:NULL];
+			}
+
+			headers = @{
+				@"Content-Type" : @"image/svg+xml",
+			};
+
+			return [[HKHTTPResponse alloc] initWithData:svgData headers:headers status:200];
+		} else if ([format isEqualToString:@"dot"]) {
+			headers = @{
+				@"Content-Type" : @"text/plain",
+			};
+
+			return [[HKHTTPResponse alloc] initWithData:data headers:headers status:200];
+		}
+
+		NSDictionary *response = @{
+			@"error" : @"Invalid format parameter",
+		};
+		return [HKHTTPJSONResponse responseWithJSONObject:response status:400 error:NULL];
 	};
 }
 
