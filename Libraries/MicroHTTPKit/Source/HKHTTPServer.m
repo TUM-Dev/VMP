@@ -10,7 +10,9 @@
 // Private headers
 #import "HKHTTPRequest+Private.h"
 
+#include <arpa/inet.h>
 #include <microhttpd.h>
+#include <netinet/in.h>
 
 HKConnectionLogger HKDefaultConnectionLogger = ^(HKHTTPRequest *r) {
 	NSLog(@"%@ %@ Headers: %@ Query Params: %@", [r method], [r URL], [r headers],
@@ -108,6 +110,41 @@ static enum MHD_Result accessHandler(void *cls, struct MHD_Connection *connectio
 													headers:headers
 											queryParameters:queryParameters];
 
+			// Retrieve the client IP address
+			const union MHD_ConnectionInfo *ci;
+			const struct sockaddr *addr;
+			char ipstr[INET6_ADDRSTRLEN];
+			NSNumber *clientIPVer;
+			NSString *clientIP;
+			NSDictionary *connectionDetails;
+
+			// Returned buffer is valid for connection lifetime
+			ci = MHD_get_connection_info(connection, MHD_CONNECTION_INFO_CLIENT_ADDRESS);
+			if (ci == NULL) {
+				goto skipDetails;
+			}
+			addr = ci->client_addr;
+
+			if (addr->sa_family == AF_INET) { // IPv4
+				struct sockaddr_in *addr_in;
+
+				addr_in = (struct sockaddr_in *) addr;
+				inet_ntop(AF_INET, &addr_in->sin_addr, ipstr, sizeof(ipstr));
+				clientIPVer = @4;
+			} else if (addr->sa_family == AF_INET6) { // IPv6
+				struct sockaddr_in6 *addr_in6;
+
+				addr_in6 = (struct sockaddr_in6 *) addr;
+				inet_ntop(AF_INET6, &addr_in6->sin6_addr, ipstr, sizeof(ipstr));
+				clientIPVer = @6;
+			}
+			clientIP = [NSString stringWithUTF8String:ipstr];
+
+			connectionDetails =
+				@{HKConnectionClientIPKey : clientIP, HKConnectionClientIPVerKey : clientIPVer};
+			[request setConnectionDetails:connectionDetails];
+
+		skipDetails:
 			// Set the request object as the connection class
 			// This is a __bridge_retained cast, so we need to release the object later on
 			*con_cls = (__bridge_retained void *) (request);

@@ -6,6 +6,9 @@
 
 #import <MicroHTTPKit/HKHTTPRequest.h>
 
+const NSString *HKConnectionClientIPKey = @"HKConnectionClientIPKey";
+const NSString *HKConnectionClientIPVerKey = @"HKConnectionClientIPVerKey";
+
 @implementation HKHTTPRequest
 
 - (instancetype)initWithMethod:(NSString *)method
@@ -24,6 +27,7 @@
 	if (self) {
 		_queryParameters = [queryParameters copy];
 		_HTTPBody = [NSMutableData data];
+		_connectionDetails = @{};
 	}
 	return self;
 }
@@ -38,7 +42,7 @@
 		_URL = [URL copy];
 		_headers = [headers copy];
 		_HTTPBody = [HTTPBody copy];
-		_userInfo = @{};
+		_connectionDetails = @{};
 	}
 	return self;
 }

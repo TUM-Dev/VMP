@@ -8,15 +8,19 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+extern const NSString *HKConnectionClientIPKey;
+extern const NSString *HKConnectionClientIPVerKey;
+
 @interface HKHTTPRequest : NSObject {
   @private
 	NSData *_HTTPBody;
 }
 
-@property (readonly, copy) NSString *method;
-@property (readonly, copy) NSURL *URL;
-@property (readonly, copy) NSDictionary<NSString *, NSString *> *headers;
-@property (readonly, copy) NSDictionary<NSString *, NSString *> *queryParameters;
+@property (copy) NSString *method;
+@property (copy) NSURL *URL;
+@property (copy) NSDictionary<NSString *, NSString *> *headers;
+@property (copy) NSDictionary<NSString *, NSString *> *queryParameters;
+@property (copy) NSDictionary *connectionDetails;
 
 /**
  * @brief The user info dictionary for the request.
