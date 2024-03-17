@@ -15,6 +15,15 @@ void VMPWarn(NSString *format, ...);
 void VMPError(NSString *format, ...);
 void VMPCritical(NSString *format, ...);
 
+#define VMP_SEND_LOG(prefix, color, type, msg, f)                                                  \
+	do {                                                                                           \
+		NSString *date;                                                                            \
+		date = [[NSDate date] description];                                                        \
+		fprintf(stderr, "%s [ %s%s\x1b[0m ] %s\n", [date UTF8String], color, prefix,               \
+				[msg UTF8String]);                                                                 \
+		[[VMPJournal defaultJournal] message:msg withPriority:type fields:f];                      \
+	} while (0);
+
 void VMPGStreamerLoggingBridge(GstDebugCategory *category, GstDebugLevel level, const gchar *file,
 							   const gchar *function, gint line, GObject *object,
 							   GstDebugMessage *message, gpointer user_data);

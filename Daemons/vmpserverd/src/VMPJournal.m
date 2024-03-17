@@ -26,15 +26,6 @@
 	NSString *message = [[NSString alloc] initWithFormat:format arguments:args];                   \
 	va_end(args);
 
-#define SEND_LOG(prefix, color, type, msg, f)                                                      \
-	do {                                                                                           \
-		NSString *date;                                                                            \
-		date = [[NSDate date] description];                                                        \
-		fprintf(stderr, "%s [ %s%s\x1b[0m ] %s\n", [date UTF8String], color, prefix,               \
-				[msg UTF8String]);                                                                 \
-		[[VMPJournal defaultJournal] message:msg withPriority:type fields:f];                      \
-	} while (0);
-
 void VMPDebug(NSString *format, ...) {
 #ifdef DEBUG
 	LOG_PREAMBLE
@@ -50,22 +41,22 @@ void VMPDebug(NSString *format, ...) {
 
 void VMPInfo(NSString *format, ...) {
 	LOG_PREAMBLE
-	SEND_LOG("INFO", ANSI_COLOR_GREEN, kVMPJournalTypeInfo, message, nil);
+	VMP_SEND_LOG("INFO", ANSI_COLOR_GREEN, kVMPJournalTypeInfo, message, nil);
 }
 
 void VMPWarn(NSString *format, ...) {
 	LOG_PREAMBLE
-	SEND_LOG("WARN", ANSI_COLOR_YELLOW, kVMPJournalTypeWarning, message, nil);
+	VMP_SEND_LOG("WARN", ANSI_COLOR_YELLOW, kVMPJournalTypeWarning, message, nil);
 }
 
 void VMPError(NSString *format, ...) {
 	LOG_PREAMBLE
-	SEND_LOG("ERROR", ANSI_COLOR_RED, kVMPJournalTypeError, message, nil);
+	VMP_SEND_LOG("ERROR", ANSI_COLOR_RED, kVMPJournalTypeError, message, nil);
 }
 
 void VMPCritical(NSString *format, ...) {
 	LOG_PREAMBLE
-	SEND_LOG("CRITICAL", ANSI_COLOR_MAGENTA, kVMPJournalTypeCritical, message, nil);
+	VMP_SEND_LOG("CRITICAL", ANSI_COLOR_MAGENTA, kVMPJournalTypeCritical, message, nil);
 }
 
 void VMPGStreamerLoggingBridge(GstDebugCategory *category, GstDebugLevel level, const gchar *file,
@@ -85,11 +76,11 @@ void VMPGStreamerLoggingBridge(GstDebugCategory *category, GstDebugLevel level, 
 	switch (level) {
 	case GST_LEVEL_ERROR:
 		wrappedMessage = [NSString stringWithUTF8String:gst_debug_message_get(message)];
-		SEND_LOG("ERROR (GST)", ANSI_COLOR_RED, kVMPJournalTypeError, wrappedMessage, f);
+		VMP_SEND_LOG("ERROR (GST)", ANSI_COLOR_RED, kVMPJournalTypeError, wrappedMessage, f);
 		break;
 	case GST_LEVEL_WARNING:
 		wrappedMessage = [NSString stringWithUTF8String:gst_debug_message_get(message)];
-		SEND_LOG("WARN (GST)", ANSI_COLOR_YELLOW, kVMPJournalTypeError, wrappedMessage, f);
+		VMP_SEND_LOG("WARN (GST)", ANSI_COLOR_YELLOW, kVMPJournalTypeError, wrappedMessage, f);
 		break;
 	default:
 		break;
