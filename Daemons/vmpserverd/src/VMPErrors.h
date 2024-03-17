@@ -42,5 +42,6 @@ typedef NS_ENUM(NSInteger, VMPErrorCode) {
 	VMPErrorCodeServerInitError = 10,
 	/// Property list parsing error.
 	VMPErrorCodePropertyListError = 11,
+	/// Error originating from Graphviz libraries
 	VMPErrorCodeGraphvizError = 12
 };
