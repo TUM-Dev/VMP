@@ -17,7 +17,10 @@
 #import "VMPServerMain.h"
 
 #define DEFAULT_PATHS                                                                              \
-	@[ @"~/.config/vmpserverd/config.plist", @"/usr/share/vmpserverd/config.plist" ]
+	@[                                                                                             \
+		@"~/.config/vmpserverd/config.plist", @"/etc/vmpserverd/config.plist",                     \
+		@"/usr/share/vmpserverd/config.plist"                                                      \
+	]
 
 #define USAGE_MSG                                                                                  \
 	"Usage: vmpserverd [OPTION]...\n"                                                              \
@@ -45,8 +48,30 @@ int main(int argc, char *argv[]) {
 
 	// Use the vmpserverd journal for MicroHTTPKit
 	HKDefaultConnectionLogger = ^(HKHTTPRequest *r) {
-		VMPInfo(@"%@ %@ -- Headers: %@; Query: %@", [r method], [r URL], [r headers],
-				[r queryParameters]);
+		NSDictionary<NSString *, NSString *> *f;
+		NSString *msg;
+		NSString *ipAddr;
+		NSNumber *ipVer;
+
+		ipAddr = [r connectionDetails][HKConnectionClientIPKey];
+		if (!ipAddr) {
+			ipAddr = @"";
+		}
+		ipVer = [r connectionDetails][HKConnectionClientIPVerKey];
+		if (!ipVer) {
+			ipVer = @0;
+		}
+
+		f = @{
+			@"HTTP_METHOD" : [r method],
+			@"HTTP_URL" : [[r URL] absoluteString],
+			@"HTTP_CLIENT_ADDR" : ipAddr,
+			@"HTTP_CLIENT_ADDR_VER" : [ipVer stringValue]
+		};
+		msg = [NSString stringWithFormat:@"%@ %@ %@ -- Headers: %@; Query: %@", ipAddr, [r method],
+										 [r URL], [r headers], [r queryParameters]];
+
+		VMP_SEND_LOG("HTTP", "\x1b[32m", kVMPJournalTypeInfo, msg, f);
 	};
 
 	@autoreleasepool {
@@ -101,8 +126,8 @@ int main(int argc, char *argv[]) {
 		}
 
 		// Set TimeZone to GMT
-		tz = [NSTimeZone timeZoneWithName: @"GMT"];
-    	[NSTimeZone setDefaultTimeZone: tz];
+		tz = [NSTimeZone timeZoneWithName:@"GMT"];
+		[NSTimeZone setDefaultTimeZone:tz];
 
 		runLoop = [NSRunLoop currentRunLoop];
 
