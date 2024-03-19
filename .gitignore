@@ -181,3 +181,6 @@ compile_commands.json
 
 # Cache
 .cache
+
+# Generated PDFs
+*.pdf
