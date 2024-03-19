@@ -746,18 +746,19 @@ $endif$
 }
 \lstset{style=eisvogel_listing_style}
 
-\lstdefinelanguage{XML}{
-  morestring      = [b]",
-  moredelim       = [s][\bfseries\color{listing-keyword}]{<}{\ },
-  moredelim       = [s][\bfseries\color{listing-keyword}]{</}{>},
-  moredelim       = [l][\bfseries\color{listing-keyword}]{/>},
-  moredelim       = [l][\bfseries\color{listing-keyword}]{>},
-  morecomment     = [s]{<?}{?>},
-  morecomment     = [s]{<!--}{-->},
-  commentstyle    = \color{listing-comment},
-  stringstyle     = \color{listing-string},
-  identifierstyle = \color{listing-identifier}
+\lstdefinelanguage{XML}
+{
+  morestring=[b]",
+  morestring=[s]{>}{<},
+  morecomment = [s]{<?}{?>},
+  morecomment = [s]{<!--}{-->},
+  stringstyle=\color{listing-text-color},
+  identifierstyle=\color{listing-keyword},
+  keywordstyle=\color{listing-keyword-2},
+  commentstyle= \color{listing-comment},
+  morekeywords={xmlns,version,type}
 }
+
 $endif$
 
 %

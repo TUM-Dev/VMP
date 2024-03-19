@@ -10,9 +10,7 @@ It is written in Objective-C 2.0, uses GNUstep for the Foundation framework, and
 GStreamer for the media processing.
 
 ## Documentation
-The documentation is available in the `docs` subdirectory.
-
-Entrypoint of the documentation: [Start](docs/start.md)
+The documentation is available in the `Documentation/` directory at the root of this repository.
 
 We try to cover the most important aspects of getting the daemon up and running,
 as well as descrinbing the architecture, configuration, customising the underlying
