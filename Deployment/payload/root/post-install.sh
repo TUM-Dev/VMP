@@ -348,6 +348,7 @@ apt install -y --no-install-recommends \
 	gstreamer1.0-libav \
 	libgstrtspserver-1.0-dev \
 	libudev-dev \
+	libgraphviz-dev \
 	libsystemd-dev
 if test $? -ne 0; then
 	echo "Failed to install vmpserverd dependencies"
