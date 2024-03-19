@@ -132,7 +132,7 @@
             -->
             <key>video</key>
             <string>intervideosrc channel={VIDEOCHANNEL} ! queue !
- vapostproc add-borders=1 ! video/x-raw(memory:VAMemory), width={WIDTH}, height={HEIGHT} ! vah264enc bitrate={BITRATE}</string>
+ videoconvertscale add-borders=1 ! video/x-raw, width={WIDTH}, height={HEIGHT} ! x264enc bitrate={BITRATE}</string>
             <!--
                 Open a pulseaudio source and encode it as AAC LC.
 
