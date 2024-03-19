@@ -10,11 +10,22 @@ The documentation is written in Markdown and is build using *pandoc*.
 ## Building the Documentation
 
 Make sure you have `pandoc`, `xelatex`, and `make` installed on your system.
+
+### Dependencies
+#### NixOS
 When running NixOS, open a ephemeral shell with `nix-shell -p texlive.combined.scheme-full pandoc gnumake`.
+
+#### Debian
+```bash
+sudo apt install texlive-xetex pandoc make
+```
+
+### Building
 
 Move the OTF fonts from `fonts/` into your local font folder:
 ```bash
 mkdir -p ~/.local/share/fonts
+cp fonts/* ~/.local/share/fonts
 fc-cache
 
 # Verify that the font has been installed
