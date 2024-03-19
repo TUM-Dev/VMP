@@ -12,6 +12,15 @@ The documentation is written in Markdown and is build using *pandoc*.
 Make sure you have `pandoc`, `xelatex`, and `make` installed on your system.
 When running NixOS, open a ephemeral shell with `nix-shell -p texlive.combined.scheme-full pandoc gnumake`.
 
+Move the OTF fonts from `fonts/` into your local font folder:
+```bash
+mkdir -p ~/.local/share/fonts
+fc-cache
+
+# Verify that the font has been installed
+fc-list -v | grep -i Inter
+```
+
 Then, run the following command in this directory:
 ```bash
 make

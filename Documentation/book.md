@@ -12,7 +12,9 @@ sansfont: Inter
 monofont: "IBM Plex Mono"
 ...
 
-# How to use this document
+# Overview
+
+## How to use this document
 We encourage you to read this document in its entirety, as it provides a comprehensive
 overview of the VMP project. Feel free to pause and experiment with the code and
 examples provided.
@@ -25,7 +27,7 @@ If you are only interested in deployment and administration, you can skip the
 in depth technical chapters which may require knowledge of the GStreamer multimedia
 framework.
 
-# Requirements
+## Requirements
 This document assumes you have a basic understanding of multimedia processing, and
 have experience with administering a Linux system.
 
@@ -71,7 +73,7 @@ rooms.
 The VMP project aims to utilize commodity hardware to fulfill the aforementioned
 requirements at a fraction of the cost of comparable commercial equipment.
 
-## Chapter 2. Architecture 
+# Chapter 2. Architecture 
 
 The VMP project is by design hardware-agnostic. Unique hardware capabilities, can be
 described by a profile which are usually located in `/usr/share/vmpserverd/profiles`.
@@ -101,59 +103,59 @@ packages them into a network stream. This is then exposed via RTSP at a path
 described by the mountpoint. A mountpoint in turn mounts a network-stream to
 a given RTSP path.
 
-### Chapter 2.1 Terminology
+## 2.1 Terminology
 
 In this section, we define key terms to ensure consistency throughout this document:
 
-#### GNUstep
+### GNUstep
 GNUstep is an open-source cross-platform reimplementation of the Apple Cocoa
 frameworks, including a modern Objective-C runtime, implementing a superset of
 Objective-C 2.0, and Foundation Kit, which the effective standard library.
 
-#### GStreamer
+### GStreamer
 GStreamer is an open-source multimedia framework. It employs a pipeline-based
 model, allowing the construction of various components (such as audio and video
 playback, recording, streaming, and editing) into a comprehensive multimedia
 workflow.
 
-#### HDCP (High-bandwidth Digital Content Protection)
+### HDCP (High-bandwidth Digital Content Protection)
 HDCP is a technology protect the capturing of protected content, namely movies
 on a hardware level.
 
-#### NixOS
+### NixOS
 A Linux distribution based on the functional nix package manager, which
 allows for declarative configuration, package-level isolation, and reproducible builds.
 
-#### Objective-C
+### Objective-C
 Objective-C is an object-oriented programming language that adds Smalltalk-style
 messaging to the C programming language. Technologies such as Key-Value-Observing (KVO),
 and a rich standard library (namely Foundation) makes it a good choice for multimedia
 applications.
 
-#### Property List
+### Property List
 Property list files are files that store serialized objects. We are using the XML
 variant of property lists to store the configuration data of the VMP daemon, as well
 as GStreamer pipeline profiles.
 
-#### RTSP (Real Time Streaming Protocol)
+### RTSP (Real Time Streaming Protocol)
 RTSP is used to negotiate and control media sessions between endpoints, allowing
 clients to request real-time video and audio feeds.
 
-#### Video 4 Linux (V4L2)
+### Video 4 Linux (V4L2)
 Video 4 Linux (V4L2) is a Linux kernel video capture and output API which streamlines
 interaction with various different capture cards.
 
-#### Video Acceleration API (VA-API)
+### Video Acceleration API (VA-API)
 VA-API provides a standardized interface for accessing hardware-accelerated
 video processing capabilities. It supports encoding, decoding, processing, and
 filtering operations, making it hardware and vendor-agnostic.
 
-### Chapter 2.2 Multimedia Pipelines
+## 2.2 Multimedia Pipelines
 
-### Chapter 2.3 Channels
+## 2.3 Channels
 
-### Chapter 2.4 Mountpoints
+## 2.4 Mountpoints
 
-## Chapter 3. Deployment
+# Chapter 3. Deployment
 
-## Chapter 4. Development
+# Chapter 4. Development
