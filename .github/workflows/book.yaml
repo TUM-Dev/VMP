@@ -1,0 +1,31 @@
+name: Documentation
+on:
+  # Run only if Documentation/ subdir was changed
+  push:
+    paths:
+      - 'Documentation/**'
+  # Enable manual trigger
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive-xetex pandoc make
+      - name: Install Fonts
+        run: |
+          mkdir -p ~/.local/share/fonts
+          cp Documentation/fonts/* ~/.local/share/fonts
+          fc-cache -f -v
+      - name: Build Book
+        run: |
+          cd Documentation
+          make
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: book
+          path: Documentation/vmp-documentation.pdf
