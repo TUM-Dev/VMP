@@ -1,10 +1,10 @@
 # vmpserverd: The virtual streaming processor server daemon
 
-_vmpserverd_ is the core of the VMP architecture, and is responsible for -
-Managing and **multiplexing** incoming AV streams from different subsystems
-(v4l2, pulseaudio, etc.) - **Compositing** of video streams - Adding audio from
-an audio provider to a video stream - Managing and **RTSP** server, and
-endpoints which expose the processed streams to clients.
+_vmpserverd_ is the core of the VMP architecture, and is responsible for
+ - Managing and **multiplexing** incoming AV streams from different subsystems (v4l2, pulseaudio, etc.)
+ - **Compositing** of video streams
+ - Adding audio from an audio provider to a video stream
+ - Managing and **RTSP** server, and endpoints which expose the processed streams to clients.
 
 It is written in Objective-C 2.0, uses GNUstep for the Foundation framework, and
 GStreamer for the media processing.
