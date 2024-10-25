@@ -2,7 +2,7 @@
 
 clangStdenv.mkDerivation rec {
   pname = "libdispatch";
-  version = "5.9.2";
+  version = "5.10.1";
 
   src = fetchFromGitHub {
     owner = "apple";
