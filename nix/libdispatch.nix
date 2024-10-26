@@ -8,7 +8,7 @@ clangStdenv.mkDerivation rec {
     owner = "apple";
     repo = "swift-corelibs-libdispatch";
     rev = "swift-${version}-RELEASE";
-    hash = "sha256-pta3wJj2LJ/lsYAWQpw0wSGLDMO41mN8Zbl78LUCaQo=";
+    hash = "sha256-pta3wJj2LJ/lsYAWQpw0wSGLDMO41mN8Zbl78LUCaQo";
   };
 
   nativeBuildInputs = [ cmake ];
