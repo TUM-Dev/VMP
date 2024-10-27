@@ -1,4 +1,4 @@
-project('MicroHTTPKit', 'objc', version : '0.2.0', default_options : ['warning_level=3'])
+project('MicroHTTPKit', 'objc', version : '0.2.1', default_options : ['warning_level=3'])
 
 pkg = import('pkgconfig')
 

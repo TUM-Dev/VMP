@@ -216,10 +216,10 @@ static void requestCompletedCallback(__attribute__((unused)) void *cls,
 }
 
 - (BOOL)startWithError:(NSError **)error {
-	_daemon =
-		MHD_start_daemon(MHD_USE_AUTO_INTERNAL_THREAD, (unsigned short) _port, NULL, NULL,
-						 &accessHandler, (__bridge void *) (self), MHD_OPTION_NOTIFY_COMPLETED,
-						 requestCompletedCallback, NULL, MHD_OPTION_END);
+	_daemon = MHD_start_daemon(MHD_USE_AUTO_INTERNAL_THREAD | MHD_USE_DUAL_STACK,
+							   (unsigned short) _port, NULL, NULL, &accessHandler,
+							   (__bridge void *) (self), MHD_OPTION_NOTIFY_COMPLETED,
+							   requestCompletedCallback, NULL, MHD_OPTION_END);
 	if (!_daemon) {
 		if (error) {
 			*error = [NSError errorWithDomain:NSPOSIXErrorDomain code:errno userInfo:nil];

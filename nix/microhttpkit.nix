@@ -2,7 +2,7 @@
 
 gnustep.stdenv.mkDerivation rec {
   pname = "microhttpkit";
-  version = "0.2.0";
+  version = "0.2.1";
 
   src = ../Libraries/MicroHTTPKit;
 
