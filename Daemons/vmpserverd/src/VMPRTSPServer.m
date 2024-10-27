@@ -324,6 +324,9 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 	for (VMPConfigChannelModel *channel in channels) {
 		NSString *type, *name;
 		NSDictionary<NSString *, id> *properties;
+		VMPPipelineManager *manager;
+		NSDictionary *vars = nil;
+		NSString *pipeline;
 
 		type = [channel type];
 		name = [channel name];
@@ -331,9 +334,7 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 
 		if ([type isEqualToString:VMPConfigChannelTypeV4L2]) {
 			VMPInfo(@"Starting channel %@ of type %@", name, type);
-			NSString *device, *pipeline;
-			NSDictionary *vars;
-			VMPPipelineManager *manager;
+			NSString *device;
 
 			device = properties[@"device"];
 			if (!device) {
@@ -342,29 +343,8 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 			}
 
 			vars = @{@"V4L2DEV" : device, @"VIDEOCHANNEL.0" : name};
-			VMPDebug(@"Substitution dictionary for v4l2 pipeline: %@", vars);
-
-			pipeline = [_currentProfile pipelineForChannelType:type variables:vars error:error];
-			if (!pipeline) {
-				return NO;
-			}
-
-			manager = [VMPPipelineManager managerWithLaunchArgs:pipeline
-														channel:name
-													   delegate:self];
-			if (![manager start]) {
-				CONFIG_ERROR(error, @"Failed to start V4L2 pipeline")
-				return NO;
-			}
-
-			[_managedPipelines addObject:manager];
-
-			VMPInfo(@"V4L2 pipeline for channel %@ started successfully", name);
 		} else if ([type isEqualToString:VMPConfigChannelTypeVideoTest]) {
 			NSNumber *width, *height;
-			NSString *pipeline;
-			NSDictionary *vars;
-			VMPPipelineManager *manager;
 
 			VMPInfo(@"Starting channel %@ of type %@", name, type);
 			width = properties[@"width"];
@@ -380,28 +360,29 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 				@"WIDTH" : [width stringValue],
 				@"HEIGHT" : [height stringValue]
 			};
-			VMPDebug(@"Substitution dictionary for video test pipeline: %@", vars);
-
-			// Substitute variables in pipeline template
-			pipeline = [_currentProfile pipelineForChannelType:type variables:vars error:error];
-			if (!pipeline) {
-				return NO;
-			}
-
-			VMPInfo(@"Creating video test pipeline manager with width %@ and height %@", width,
-					height);
-
-			manager = [VMPPipelineManager managerWithLaunchArgs:pipeline
-														channel:name
-													   delegate:self];
-			if (![manager start]) {
-				CONFIG_ERROR(error, @"Failed to start video test pipeline")
-				return NO;
-			}
-			[_managedPipelines addObject:manager];
-
-			VMPInfo(@"Video test pipeline for channel %@ started successfully", name);
 		}
+
+		// Skip pipeline creation if type is unknown
+		if (nil == vars) {
+			continue;
+		}
+
+		VMPDebug(@"Substitution dictionary for pipeline with name '%@': %@", name, vars);
+
+		pipeline = [_currentProfile pipelineForChannelType:type variables:vars error:error];
+		if (!pipeline) {
+			return NO;
+		}
+
+		manager = [VMPPipelineManager managerWithLaunchArgs:pipeline channel:name delegate:self];
+		if (![manager start]) {
+			CONFIG_ERROR(error, @"Failed to start pipeline")
+			return NO;
+		}
+
+		[_managedPipelines addObject:manager];
+
+		VMPInfo(@"pipeline '%@' for channel %@ started successfully", manager, name);
 	}
 
 	VMPDebug(@"Finished starting channel pipelines");
@@ -666,11 +647,11 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 
 - (VMPRecordingManager *)defaultRecordingWithOptions:(NSDictionary *)options
 												path:(NSURL *)path
-											deadline: (NSDate *)date
-											   error: (NSError **) error {
+											deadline:(NSDate *)date
+											   error:(NSError **)error {
 	NSString *videoChannel = nil;
 	NSString *audioChannel = nil;
-	NSString *pulseDevice  = nil;
+	NSString *pulseDevice = nil;
 	NSNumber *videoBitrate = nil;
 	NSNumber *audioBitrate = nil;
 	NSNumber *width = nil;
@@ -695,11 +676,12 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 	}
 
 	if (!video || !audio) {
-		CONFIG_ERROR(error, @"'videoChannel' or 'audioChannel' key missing in options dictionary and not defined in channel config");
+		CONFIG_ERROR(error, @"'videoChannel' or 'audioChannel' key missing in options dictionary "
+							@"and not defined in channel config");
 		return nil;
 	}
 
-	if (![[audio type] isEqualToString: VMPConfigChannelTypePulseAudio]) {
+	if (![[audio type] isEqualToString:VMPConfigChannelTypePulseAudio]) {
 		CONFIG_ERROR(error, @"Currently, only audio channels of type 'pulse' are supported");
 		return nil;
 	}
@@ -748,17 +730,17 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 	// Substitution dictionary for video pipeline
 	vars = @{
 		@"VIDEOCHANNEL" : videoChannel,
-		@"WIDTH": [width stringValue],
-		@"HEIGHT": [height stringValue],
-		@"BITRATE": [videoBitrate stringValue]
+		@"WIDTH" : [width stringValue],
+		@"HEIGHT" : [height stringValue],
+		@"BITRATE" : [videoBitrate stringValue]
 	};
-	template = [template stringBySubstitutingVariables: vars error: error];
+	template = [template stringBySubstitutingVariables:vars error:error];
 	if (!template) {
 		return nil;
 	}
 
 	pipeline = [template mutableCopy];
-	[pipeline appendFormat: @" ! matroskamux name=mux !	filesink location=%@ ", [path path]];
+	[pipeline appendFormat:@" ! matroskamux name=mux !	filesink location=%@ ", [path path]];
 
 	template = [_currentProfile recordings][@"pulse"];
 	if (!template) {
@@ -767,17 +749,14 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 	}
 
 	// Substitution directory for audio pipeline
-	vars = @{
-		@"PULSEDEV": pulseDevice,
-		@"BITRATE": [audioBitrate stringValue]
-	};
-	template = [template stringBySubstitutingVariables: vars error: error];
+	vars = @{@"PULSEDEV" : pulseDevice, @"BITRATE" : [audioBitrate stringValue]};
+	template = [template stringBySubstitutingVariables:vars error:error];
 	if (!template) {
 		return nil;
 	}
 
-	[pipeline appendString: template];
-	[pipeline appendString: @" ! mux."];
+	[pipeline appendString:template];
+	[pipeline appendString:@" ! mux."];
 
 	/* pipeline now contains a full GStreamer pipeline for encoding
 	   and writing out a matroska file to path.
@@ -786,7 +765,10 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 	   filesink location=<PATH> <AUDIO_PIPELINE> ! mux. -e
 	*/
 
-	return [VMPRecordingManager recorderWithLaunchArgs: pipeline path: path recordUntil: date delegate: self];
+	return [VMPRecordingManager recorderWithLaunchArgs:pipeline
+												  path:path
+										   recordUntil:date
+											  delegate:self];
 }
 
 /*
