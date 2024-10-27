@@ -18,11 +18,11 @@ pkgs.mkShell {
     pkgs.gst_all_1.gst-libav # For avenc_aac
     pkgs.gst_all_1.gst-vaapi
 
-/*
-    pkgs.clang_18
-    pkgs.lldb_18
-    pkgs.clang-tools_18
-*/
+    /*
+      pkgs.clang_18
+      pkgs.lldb_18
+      pkgs.clang-tools_18
+    */
     pkgs.llvmPackages_14.llvm
     pkgs.llvmPackages_14.clang
     pkgs.llvmPackages_14.lldb
@@ -44,6 +44,9 @@ pkgs.mkShell {
 
     # CalendarKit
     pkgs.libical
+
+    # MircroHTTPKit
+    pkgs.libmicrohttpd
 
     # vaapi (vainfo)
     pkgs.libva-utils
