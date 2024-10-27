@@ -1,4 +1,4 @@
-/* vmp-server - A virtual multimedia processor
+/* vmpserverd - A virtual multimedia processor
  * Copyright (C) 2024 Hugo Melder
  *
  * SPDX-License-Identifier: MIT

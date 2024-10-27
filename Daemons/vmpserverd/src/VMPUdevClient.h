@@ -1,4 +1,4 @@
-/* vmp-server - A virtual multimedia processor
+/* vmpserverd - A virtual multimedia processor
  * Copyright (C) 2023 Hugo Melder
  *
  * SPDX-License-Identifier: MIT
@@ -56,7 +56,8 @@
 
   @return The initialized udev client for the given subsystems
 */
-+ (instancetype)clientWithSubsystems:(NSArray<NSString *> *)subsystems Delegate:(id<VMPUdevClientDelegate>)delegate;
++ (instancetype)clientWithSubsystems:(NSArray<NSString *> *)subsystems
+							Delegate:(id<VMPUdevClientDelegate>)delegate;
 
 /**
 	 @brief Creates and returns a new udev client object
@@ -66,7 +67,8 @@
 
 	 @return A new udev client for the given subsystems
 */
-- (instancetype)initWithSubsystems:(NSArray<NSString *> *)subsystems Delegate:(id<VMPUdevClientDelegate>)delegate;
+- (instancetype)initWithSubsystems:(NSArray<NSString *> *)subsystems
+						  Delegate:(id<VMPUdevClientDelegate>)delegate;
 
 /**
    @brief Starts monitoring udev events

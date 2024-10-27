@@ -1,4 +1,4 @@
-/* vmp-server - A virtual multimedia processor
+/* vmpserverd - A virtual multimedia processor
  * Copyright (C) 2023 Hugo Melder
  *
  * SPDX-License-Identifier: MIT
@@ -13,19 +13,19 @@
 #import "VMPRTSPServer.h"
 #import "VMPServerMain.h"
 
-#include <graphviz/gvc.h>
 #include <graphviz/cgraph.h>
+#include <graphviz/gvc.h>
 
 #include "config.h"
 
 // Convert a DOT graph to SVG
 static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 	NSData *svgData;
-    GVC_t *gvc;
+	GVC_t *gvc;
 	Agraph_t *g;
-    char *rendered;
-    unsigned int length;
-	
+	char *rendered;
+	unsigned int length;
+
 	// Initialize Graphviz context
 	gvc = gvContext();
 	if (!gvc) {
@@ -34,7 +34,7 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 	}
 
 	// Create a graph from the DOT data
-	g = agmemread((char *)[dotData bytes]);
+	g = agmemread((char *) [dotData bytes]);
 	if (!g) {
 		VMP_FAST_ERROR(error, VMPErrorCodeGraphvizError, @"Failed to create graph from DOT data");
 		gvFreeContext(gvc);
@@ -58,11 +58,11 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 
 	svgData = [NSData dataWithBytes:rendered length:length];
 
-    // Clean up
-    gvFreeRenderData(rendered);
-    gvFreeLayout(gvc, g);
-    agclose(g);
-    gvFreeContext(gvc);
+	// Clean up
+	gvFreeRenderData(rendered);
+	gvFreeLayout(gvc, g);
+	agclose(g);
+	gvFreeContext(gvc);
 
 	return svgData;
 }
@@ -433,8 +433,8 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 		}
 
 		decodedBody = [NSJSONSerialization JSONObjectWithData:[request HTTPBody]
-													 options:0
-													   error:NULL];
+													  options:0
+														error:NULL];
 		if (!decodedBody) {
 			NSDictionary *response = @{
 				@"error" : @"Failed to decode JSON body",
@@ -465,7 +465,7 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 		NSDateFormatter *isoFormatter = [[NSDateFormatter alloc] init];
 		NSDate *stopAtDate;
 
-		[isoFormatter setDateFormat: @"yyyy-MM-dd'T'HH:mm:ssZ"];
+		[isoFormatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ssZ"];
 
 		stopAtDate = [isoFormatter dateFromString:stopAt];
 		if (!stopAtDate) {
@@ -474,7 +474,7 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 			};
 			return [HKHTTPJSONResponse responseWithJSONObject:response status:400 error:NULL];
 		}
-		
+
 		// Check if stop date is reasonable (not more then 8 hours in the future)
 		// TODO: Add option to define this in configuration
 		if ([stopAtDate timeIntervalSinceNow] > 8 * 60 * 60) {
@@ -483,7 +483,7 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 			};
 			return [HKHTTPJSONResponse responseWithJSONObject:response status:400 error:NULL];
 		}
-		
+
 		// Create a new recording with default options
 		// TODO: Allow for user to specify options
 		[recordingOptions addEntriesFromDictionary:@{
@@ -500,37 +500,36 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 		now = [NSDate date];
 		url = [NSURL fileURLWithPathComponents:@[
 			[_configuration scratchDirectory],
-			[NSString stringWithFormat:@"recording_%@.mkv", [isoFormatter stringFromDate: now]]
+			[NSString stringWithFormat:@"recording_%@.mkv", [isoFormatter stringFromDate:now]]
 		]];
 
 		recording = [_rtspServer defaultRecordingWithOptions:recordingOptions
-											path:url
-										deadline:stopAtDate
-										   error:&error];
+														path:url
+													deadline:stopAtDate
+													   error:&error];
 		if (!recording) {
 			NSString *desc;
 
-			desc = [NSString stringWithFormat:@"Failed to create recording: %@", [error localizedDescription]];
-			NSDictionary *response = @{
-				@"error" : desc
-			};
+			desc = [NSString
+				stringWithFormat:@"Failed to create recording: %@", [error localizedDescription]];
+			NSDictionary *response = @{@"error" : desc};
 			return [HKHTTPJSONResponse responseWithJSONObject:response status:500 error:NULL];
 		}
 
-		if (![_rtspServer scheduleRecording: recording]) {
-			NSDictionary *response = @{
-				@"error" : @"Failed to schedule recording"
-			};
+		if (![_rtspServer scheduleRecording:recording]) {
+			NSDictionary *response = @{@"error" : @"Failed to schedule recording"};
 			return [HKHTTPJSONResponse responseWithJSONObject:response status:500 error:NULL];
 		}
 
 		return [HKHTTPJSONResponse responseWithJSONObject:@{
 			@"status" : @"ok",
 			@"path" : [url path],
-			@"startAt": [isoFormatter stringFromDate:now],
+			@"startAt" : [isoFormatter stringFromDate:now],
 			@"stopAt" : [isoFormatter stringFromDate:stopAtDate],
-			@"numberOfSeconds": @([stopAtDate timeIntervalSinceDate:now])
-		} status:200 error:NULL];
+			@"numberOfSeconds" : @([stopAtDate timeIntervalSinceDate:now])
+		}
+												   status:200
+													error:NULL];
 	};
 }
 
@@ -574,9 +573,8 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 										  handler:[self _mountpointGraphHandlerV1]];
 	// POST /api/v1/recording/create
 	recordingCreateRoute = [HKRoute routeWithPath:@"/api/v1/recording/create"
-											method:HKHTTPMethodPOST
-										   handler:[self _recordingCreateV1]];
-	
+										   method:HKHTTPMethodPOST
+										  handler:[self _recordingCreateV1]];
 
 	[router registerRoute:statusRoute withCORSHandler:CORSHandler];
 	[router registerRoute:configRoute withCORSHandler:CORSHandler];

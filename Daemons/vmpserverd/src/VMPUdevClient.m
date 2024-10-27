@@ -1,4 +1,4 @@
-/* vmp-server - A virtual multimedia processor
+/* vmpserverd - A virtual multimedia processor
  * Copyright (C) 2023 Hugo Melder
  *
  * SPDX-License-Identifier: MIT
@@ -19,11 +19,13 @@
 
 @implementation VMPUdevClient
 
-+ (instancetype)clientWithSubsystems:(NSArray<NSString *> *)subsystems Delegate:(id<VMPUdevClientDelegate>)delegate {
++ (instancetype)clientWithSubsystems:(NSArray<NSString *> *)subsystems
+							Delegate:(id<VMPUdevClientDelegate>)delegate {
 	return [[VMPUdevClient alloc] initWithSubsystems:subsystems Delegate:delegate];
 }
 
-- (instancetype)initWithSubsystems:(NSArray<NSString *> *)subsystems Delegate:(id<VMPUdevClientDelegate>)delegate {
+- (instancetype)initWithSubsystems:(NSArray<NSString *> *)subsystems
+						  Delegate:(id<VMPUdevClientDelegate>)delegate {
 	self = [super init];
 	if (self) {
 		_delegate = delegate;
@@ -46,7 +48,9 @@
 	if (!_udev) {
 		VMPError(@"Failed to create udev context");
 		if (error) {
-			*error = [NSError errorWithDomain:VMPErrorDomain code:VMPErrorCodeUdevError userInfo:nil];
+			*error = [NSError errorWithDomain:VMPErrorDomain
+										 code:VMPErrorCodeUdevError
+									 userInfo:nil];
 		}
 		return NO;
 	}
@@ -56,16 +60,21 @@
 	if (!_monitor) {
 		VMPError(@"Failed to create udev monitor");
 		if (error) {
-			*error = [NSError errorWithDomain:VMPErrorDomain code:VMPErrorCodeUdevMonitorError userInfo:nil];
+			*error = [NSError errorWithDomain:VMPErrorDomain
+										 code:VMPErrorCodeUdevMonitorError
+									 userInfo:nil];
 		}
 		return NO;
 	}
 
 	// Register subsystems to udev monitor filter
 	for (NSString *subsystem in _subsystems) {
-		if (udev_monitor_filter_add_match_subsystem_devtype(_monitor, [subsystem UTF8String], NULL) < 0) {
+		if (udev_monitor_filter_add_match_subsystem_devtype(_monitor, [subsystem UTF8String], NULL)
+			< 0) {
 			if (error) {
-				*error = [NSError errorWithDomain:VMPErrorDomain code:VMPErrorCodeUdevMonitorError userInfo:nil];
+				*error = [NSError errorWithDomain:VMPErrorDomain
+											 code:VMPErrorCodeUdevMonitorError
+										 userInfo:nil];
 			}
 			return NO;
 		}
@@ -75,7 +84,9 @@
 	if (udev_monitor_enable_receiving(_monitor) < 0) {
 		VMPError(@"Failed to enable udev monitor");
 		if (error) {
-			*error = [NSError errorWithDomain:VMPErrorDomain code:VMPErrorCodeUdevMonitorError userInfo:nil];
+			*error = [NSError errorWithDomain:VMPErrorDomain
+										 code:VMPErrorCodeUdevMonitorError
+									 userInfo:nil];
 		}
 		return NO;
 	}
