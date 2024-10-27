@@ -360,6 +360,19 @@ static void media_constructed_cb(GstRTSPMediaFactory *factory, GstRTSPMedia *med
 				@"WIDTH" : [width stringValue],
 				@"HEIGHT" : [height stringValue]
 			};
+		} else if ([type isEqualToString:VMPConfigChannelTypeDecklink]) {
+			VMPInfo(@"Starting channel %@ of type %@", name, type);
+			NSNumber *device = properties[@"deviceNumber"];
+			if (!device) {
+				CONFIG_ERROR(error, @"decklink channel is missing 'deviceNumber' property")
+				return NO;
+			}
+
+			// Substitution dictionary for pipeline template
+			vars = @{
+				@"VIDEOCHANNEL.0" : name,
+				@"DEV" : [device stringValue],
+			};
 		}
 
 		// Skip pipeline creation if type is unknown

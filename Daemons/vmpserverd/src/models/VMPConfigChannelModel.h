@@ -10,6 +10,8 @@
 
 /// Channel for capturing V4L2 devices
 extern NSString *const VMPConfigChannelTypeV4L2;
+/// Channel for capturing from Decklinks
+extern NSString *const VMPConfigChannelTypeDecklink;
 /// Channel for creating a reproducible video test pattern
 extern NSString *const VMPConfigChannelTypeVideoTest;
 /// Channel for creating a reproducible audio test tone

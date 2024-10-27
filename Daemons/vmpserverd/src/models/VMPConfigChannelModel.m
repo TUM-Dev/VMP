@@ -10,6 +10,7 @@
 #import "VMPModelCommon.h"
 
 NSString *const VMPConfigChannelTypeV4L2 = @"v4l2";
+NSString *const VMPConfigChannelTypeDecklink = @"decklink";
 NSString *const VMPConfigChannelTypeVideoTest = @"videoTest";
 NSString *const VMPConfigChannelTypeAudioTest = @"audioTest";
 NSString *const VMPConfigChannelTypePulseAudio = @"pulse";

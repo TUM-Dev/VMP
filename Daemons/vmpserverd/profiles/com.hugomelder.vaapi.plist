@@ -97,6 +97,8 @@
                 communication in the same process.
             -->
             <string>v4l2src device={V4L2DEV} ! videoconvertscale add-borders=1 ! video/x-raw, width=1920, height=1080 ! intervideosink channel={VIDEOCHANNEL.0}</string>
+            <key>decklink</key>
+            <string>decklinksrc device-number={DEV} ! videoconvert ! videoscale ! videorate ! video/x-raw, width=1920, height=1080 ! intervideosink channel={VIDEOCHANNEL.0}</string>
             <key>videoTest</key>
             <string>videotestsrc is-live=1 ! video/x-raw,width={WIDTH},height={HEIGHT},format=NV12 ! intervideosink channel={VIDEOCHANNEL.0}</string>
         </dict>
