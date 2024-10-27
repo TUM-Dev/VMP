@@ -50,15 +50,15 @@
                 and h264 encoding on CPU (using libx264). The resulting h264 stream is then fed
                 into the rtp payloader.
             -->
-            <string>intervideosrc channel={VIDEOCHANNEL.0} ! queue ! videoconvert ! x264enc bitrate=2500 !
- rtph264pay name=pay0 pt=96</string>
+            <string>intervideosrc channel={VIDEOCHANNEL.0} ! queue ! video/x-raw,width=1920,height=1080 !
+ videoconvert ! x264enc bitrate=2500 ! rtph264pay name=pay0 pt=96</string>
             <key>combined</key>
             <string>compositor name=comp background=1
  sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810 sink_0::sizing-policy=1
  sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 sink_1::sizing-policy=1 !
- video/x-raw,width=1920,height=1080 ! queue ! x264enc bitrate=2500 ! rtph264pay name=pay0 pt=96
- intervideosrc channel={VIDEOCHANNEL.0} ! videoconvert ! comp.sink_0
- intervideosrc channel={VIDEOCHANNEL.1} ! videoconvert ! comp.sink_1</string>
+ video/x-raw,width=1920,height=1080 ! x264enc bitrate=2500 ! rtph264pay name=pay0 pt=96
+ intervideosrc channel={VIDEOCHANNEL.0} ! queue ! comp.sink_0
+ intervideosrc channel={VIDEOCHANNEL.1} ! queue ! comp.sink_1</string>
         </dict>
         
         <key>channels</key>
@@ -66,7 +66,7 @@
             <key>v4l2</key>
             <string>v4l2src device={V4L2DEV} ! videoconvertscale add-borders=1 ! video/x-raw, width=1920, height=1080 ! queue ! intervideosink channel={VIDEOCHANNEL.0}</string>
             <key>videoTest</key>
-            <string>videotestsrc is-live=1 ! video/x-raw,width={WIDTH},height={HEIGHT} !
+            <string>videotestsrc is-live=1 ! video/x-raw,width={WIDTH},height={HEIGHT},format=NV12 !
  intervideosink channel={VIDEOCHANNEL.0}</string>
         </dict>
         <key>audioProviders</key>

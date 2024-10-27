@@ -18,25 +18,25 @@
         <!--
         Mountpoints and the underlying GStreamer pipelines are managed
         by the GStreamer RTSP server.
-            
+
         You can choose between various types of mountpoints in the config.plist
         (currently single, and combined), but every mountpoint needs a GStreamer
         pipeline description.
-        
+
         Pipeline configurations for mountpoints must contain rtp payloaders as
         sink elements in the format pay%d, where %d is a non-negative integer
         (Further information can be found in the GStreamer RTSP Server
         documentation).
-        
+
         We use variables enclosed in '{}' for values that are populated during pipelines
         construction.
-        
+
         Currently, the following variables are available:
         - {VIDEOCHANNEL.%u}: The video channel name. Enumerated using unsigned
         integers, starting at 0 (e.g. {VIDEOCHANNEL.0})
         - {PULSEDEV}: The pulse audio device name
         (e.g. alsa_input.pci-0000_00_03.0.analog-stereo)
-        
+
         'pactl list sources short' lists all availables sources. The second column
         in the table is the pulseaudio device name.
         Replace 'sources' with 'sinks' to get a list of all available sinks.
@@ -50,14 +50,15 @@
                 and h264 encoding on GPU (using VAAPI). The resulting h264 stream is then fed
                 into the rtp payloader.
             -->
-            <string>intervideosrc channel={VIDEOCHANNEL.0} ! queue ! vapostproc ! vah264enc bitrate=2500 !
-                rtph264pay name=pay0 pt=96</string>
+	    <string>intervideosrc channel={VIDEOCHANNEL.0} ! queue ! video/x-raw,width=1920,height=1080 !
+ vapostproc ! vah264enc bitrate=2500 !
+ rtph264pay name=pay0 pt=96</string>
             <key>combined</key>
         <!--
             We use the vacompositor which uses VAAPI for hardware-accelerated compositing.
 
             The presentation stream is fed into sink_0 and subsequently rescaled.
-            sink_0 is rescaled into a (smaller) window with the diagonal starting at the top left 
+            sink_0 is rescaled into a (smaller) window with the diagonal starting at the top left
             (0, 0), and ending at (1440, 810).
 
             The camera stream is fed into sink_1 and rescaled into the upper right region
@@ -80,14 +81,14 @@
  sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1440 sink_0::height=810
  sink_1::xpos=1440 sink_1::ypos=0 sink_1::width=480 sink_1::height=270 ! video/x-raw(memory:VAMemory), width=1920, height=1080 !
  vah264enc bitrate=2500 ! rtph264pay name=pay0 pt=96
- intervideosrc channel={VIDEOCHANNEL.0} ! comp.sink_0
- intervideosrc channel={VIDEOCHANNEL.1} ! comp.sink_1</string>
+ intervideosrc channel={VIDEOCHANNEL.0} ! queue ! comp.sink_0
+ intervideosrc channel={VIDEOCHANNEL.1} ! queue ! comp.sink_1</string>
         </dict>
 
         <key>channels</key>
         <dict>
             <key>v4l2</key>
-            <!-- 
+            <!--
                 Opens a capture card, or other v4l2 (Video 4 Linux) device with the v4l2src element.
                 We rescale the feed to 1080p and preserve the original aspect ratio by adding
                 borders if necessary (see "add-borders=1").
@@ -95,10 +96,9 @@
                 The rescaled video stream is then fed into an inter video sink, enabling inter-pipeline
                 communication in the same process.
             -->
-            <string>v4l2src device={V4L2DEV} ! vapostproc add-borders=1 ! video/x-raw, width=1920, height=1080 ! intervideosink channel={VIDEOCHANNEL.0}</string>
+            <string>v4l2src device={V4L2DEV} ! videoconvertscale add-borders=1 ! video/x-raw, width=1920, height=1080 ! intervideosink channel={VIDEOCHANNEL.0}</string>
             <key>videoTest</key>
-            <string>videotestsrc is-live=1 ! video/x-raw,width={WIDTH},height={HEIGHT} !
- intervideosink channel={VIDEOCHANNEL.0}</string>
+            <string>videotestsrc is-live=1 ! video/x-raw,width={WIDTH},height={HEIGHT},format=NV12 ! intervideosink channel={VIDEOCHANNEL.0}</string>
         </dict>
         <key>audioProviders</key>
         <dict>
@@ -113,7 +113,7 @@
             <key>audioTest</key>
             <string>audiotestsrc ! voaacenc bitrate=96000 ! queue ! rtpmp4apay name=pay1 pt=97</string>
         </dict>
-    
+
         <!--
             Configuration for video and audio recording.  Partial (pipelines)
             are used to describe device-dependent encoding and are pieced
