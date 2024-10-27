@@ -4,15 +4,13 @@
 }:
 
 let
-    #unstablePkgs = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz") {};
+  #unstablePkgs = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz") {};
 in
 pkgs.mkShell {
   buildInputs = [
     # GStreamer
     pkgs.gst_all_1.gstreamer
-    pkgs.gst_all_1.gstreamer.dev
     pkgs.gst_all_1.gst-rtsp-server
-    pkgs.gst_all_1.gst-rtsp-server.dev
     pkgs.gst_all_1.gst-plugins-ugly # For x264enc element
     pkgs.gst_all_1.gst-plugins-bad # For intervideo* elements
     pkgs.gst_all_1.gst-plugins-base
@@ -20,39 +18,26 @@ pkgs.mkShell {
     pkgs.gst_all_1.gst-libav # For avenc_aac
     pkgs.gst_all_1.gst-vaapi
 
-    pkgs.llvmPackages_14.llvm
-    pkgs.llvmPackages_14.clang
-    pkgs.llvmPackages_14.lldb
-    pkgs.llvmPackages_14.lld
-    pkgs.clang-tools_14
+    pkgs.clang_18
+    pkgs.lldb_18
+    pkgs.clang-tools_18
+    pkgs.meson
+    pkgs.pkg-config
+    pkgs.ninja
 
     # GNUstep
     pkgs.gnustep.base
     pkgs.gnustep.make
 
+    pkgs.graphviz
+    pkgs.udev
+    pkgs.libdispatch
+    pkgs.microhttpkit
     pkgs.glib
-    pkgs.glib.dev
-    pkgs.gobject-introspection
-    pkgs.meson
-    pkgs.pkg-config
-    pkgs.ninja
+    pkgs.xctest
 
     # vaapi (vainfo)
     pkgs.libva-utils
-
-    pkgs.graphviz
-
-    pkgs.udev
-    pkgs.udev.dev
-
-    # MicroHTTPKit
-    pkgs.microhttpkit
-
-    pkgs.libdispatch
-
-    # MicroHTTPKit Dev (TODO: Move into Libraries/nix)
-    pkgs.libmicrohttpd
-    pkgs.xctest
   ];
 
   shellHook = ''
