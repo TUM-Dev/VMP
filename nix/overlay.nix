@@ -6,6 +6,7 @@ self: super: {
   vmpserverd = super.callPackage ./vmpserverd.nix {
     libdispatch = self.libdispatch;
     microhttpkit = self.microhttpkit;
+    calendarkit = self.calendarkit;
   };
 }
 

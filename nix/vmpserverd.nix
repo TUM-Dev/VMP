@@ -1,6 +1,7 @@
 { lib
 , libdispatch
 , microhttpkit
+, calendarkit
 , gnustep
 , glib
 , gst_all_1
@@ -24,6 +25,7 @@ gnustep.stdenv.mkDerivation rec {
     gnustep.base
     libdispatch
     microhttpkit
+    calendarkit
     glib
     gst_all_1.gstreamer
     gst_all_1.gst-rtsp-server

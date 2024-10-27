@@ -39,6 +39,7 @@ pkgs.mkShell {
     pkgs.udev
     pkgs.libdispatch
     pkgs.microhttpkit
+    pkgs.calendarkit
     pkgs.glib
     pkgs.xctest
 
