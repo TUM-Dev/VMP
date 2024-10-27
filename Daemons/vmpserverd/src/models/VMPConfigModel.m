@@ -22,6 +22,7 @@
 		SET_PROPERTY(_name, @"name");
 		SET_PROPERTY(_profileDirectory, @"profileDirectory");
 		SET_PROPERTY(_scratchDirectory, @"scratchDirectory");
+		SET_PROPERTY(_icalURL, @"icalURL");
 		SET_PROPERTY(_rtspAddress, @"rtspAddress");
 		SET_PROPERTY(_rtspPort, @"rtspPort");
 		SET_PROPERTY(_httpPort, @"httpPort");
@@ -29,6 +30,7 @@
 		SET_PROPERTY(_httpUsername, @"httpUsername");
 		SET_PROPERTY(_httpPassword, @"httpPassword");
 		SET_PROPERTY(_gstDebug, @"gstDebug");
+		SET_PROPERTY(_locations, @"locations");
 
 		SET_PROPERTY(plistMountpoints, @"mountpoints");
 		SET_PROPERTY(plistChannels, @"channels");
@@ -86,6 +88,7 @@
 
 - (id)propertyList {
 	VMP_ASSERT(_name, @"name is nil");
+	VMP_ASSERT(_icalURL, @"icalURL is nil");
 	VMP_ASSERT(_rtspAddress, @"rtspAddress is nil");
 	VMP_ASSERT(_rtspPort, @"rtspPort is nil");
 	VMP_ASSERT(_httpPort, @"httpPort is nil");
@@ -98,6 +101,7 @@
 
 	return @{
 		@"name" : _name,
+		@"icalURL" : _icalURL,
 		@"rtspAddress" : _rtspAddress,
 		@"rtspPort" : _rtspPort,
 		@"httpPort" : _httpPort,

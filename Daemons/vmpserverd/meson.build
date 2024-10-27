@@ -28,6 +28,9 @@ systemd_dep = dependency('libsystemd')
 # HTTP server library for the REST API
 libmicrohttpkit_dep = dependency('microhttpkit')
 
+# CalendarKit for iCalendar parsing
+libcalendarkit_dep = dependency('calendarkit')
+
 # libdispatch for recording scheduling
 libdispatch_dep = dependency('libdispatch')
 
@@ -70,6 +73,8 @@ source = [
     'src/VMPRecordingManager.m',
     'src/VMPErrors.m',
     'src/VMPJournal.m',
+    'src/VMPCalEvent.m',
+    'src/VMPCalSync.m',
     'src/NSString+substituteVariables.m',
     'src/NSRunLoop+blockExecution.m',
     # Models
@@ -99,6 +104,7 @@ dependencies = [
     udev_dep,
     systemd_dep,
     libmicrohttpkit_dep,
+    libcalendarkit_dep,
     libdispatch_dep,
     libcgraph_dep,
     libgvc_dep,

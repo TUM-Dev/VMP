@@ -22,6 +22,40 @@
     <string></string>
 
     <!--
+        iCalendar URL for scheduling recordings
+        and locations for filtering calendar events
+    -->
+    <key>icalURL</key>
+    <string></string>
+    <key>locations</key>
+    <!--
+        Maps LOCATION property of a VEVENT to
+        channels.
+
+        E.g. If we have an event in FMI_HS1, two
+        recordings are scheduled:
+         1. present0, audio0
+         2. camera0, audio0
+    -->
+    <array>
+        <dict>
+            <key>name</key>
+            <string>FMI_HS1</string>
+            <key>source</key>
+            <array>
+                <array>
+                    <string>present0</string>
+                    <string>audio0</string>
+                </array>
+                <array>
+                    <string>camera0</string>
+                    <string>audio0</string>
+                </array>
+            </array>
+        </dict>
+    </array>
+
+    <!--
         Specify the address and port of the RTSP server here.
         The rtspAddress is the IP address of the interface to bind to.
     -->

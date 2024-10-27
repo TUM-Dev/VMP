@@ -7,14 +7,15 @@
 #import <MicroHTTPKit/MicroHTTPKit.h>
 #import <glib.h>
 
+#import "VMPCalSync.h"
 #import "VMPConfigModel.h"
 #import "VMPJournal.h"
 #import "VMPProfileManager.h"
 #import "VMPRTSPServer.h"
 #import "VMPServerMain.h"
 
-#include <graphviz/cgraph.h>
-#include <graphviz/gvc.h>
+#import <graphviz/cgraph.h>
+#import <graphviz/gvc.h>
 
 #include "config.h"
 
@@ -70,6 +71,7 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 @implementation VMPServerMain {
 	VMPRTSPServer *_rtspServer;
 	VMPProfileManager *_profileMgr;
+	VMPCalSync *_calSync;
 	HKHTTPServer *_httpServer;
 	NSString *_version;
 	NSDate *_startedAtDate;

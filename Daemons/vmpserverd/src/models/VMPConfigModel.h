@@ -18,6 +18,8 @@
 
 @property (nonatomic, strong) NSString *scratchDirectory;
 
+@property (nonatomic, strong) NSString *icalURL;
+
 @property (nonatomic, strong) NSString *rtspAddress;
 
 @property (nonatomic, strong) NSString *rtspPort;
@@ -31,6 +33,8 @@
 @property (nonatomic, strong) NSString *httpPassword;
 
 @property (nonatomic, strong) NSString *gstDebug;
+
+@property (nonatomic, strong) NSArray<id> *locations;
 
 @property (nonatomic, strong) NSArray<VMPConfigMountpointModel *> *mountpoints;
 
