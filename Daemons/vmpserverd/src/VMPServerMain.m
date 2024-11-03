@@ -7,7 +7,7 @@
 #import <MicroHTTPKit/MicroHTTPKit.h>
 #import <glib.h>
 
-#import "VMPCalSync.h"
+#import "VMPCalendarSync.h"
 #import "VMPConfigModel.h"
 #import "VMPJournal.h"
 #import "VMPProfileManager.h"
@@ -70,8 +70,8 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 
 @implementation VMPServerMain {
 	VMPRTSPServer *_rtspServer;
+	VMPCalendarSync *_calendarSync;
 	VMPProfileManager *_profileMgr;
-	VMPCalSync *_calSync;
 	HKHTTPServer *_httpServer;
 	NSString *_version;
 	NSDate *_startedAtDate;
@@ -140,6 +140,48 @@ static NSData *convertDOTtoSVG(NSData *dotData, NSError **error) {
 		port = [[configuration httpPort] integerValue];
 		// We install HTTP handlers later on when -runWithError: is invoked
 		_httpServer = [HKHTTPServer serverWithPort:port];
+
+		// Create a new iCalendar Sync instance
+		NSURL *icalURL = [NSURL URLWithString:[configuration icalURL]];
+		NSArray *locations = [configuration locations];
+		NSMutableArray *locationNames = [NSMutableArray arrayWithCapacity:[locations count]];
+		for (NSDictionary *dict in locations) {
+			NSString *name = dict[@"name"];
+			if (!name) {
+				VMPWarn(@"Ignoring empty value for key 'name' in 'locations' dict");
+				continue;
+			}
+
+			[locationNames addObject:name];
+		}
+
+		_calendarSync = [[VMPCalendarSync alloc]
+				  initWithURL:icalURL
+					 interval:10 * 60 /* every 10m */
+			notifyBeforeStart:10 * 60 /* notify 10m before start of event +10m tolerance */];
+
+		// Filter out unrelated events or events that are already scheduled for recording
+		[_calendarSync setFilterBlock:^BOOL(ICALComponent *comp) {
+			NSString *location = [comp location];
+			if (!location) {
+				return NO; // ignore component if it has no location
+			}
+
+			for (NSString *whitelisted in locationNames) {
+				if ([whitelisted isEqualToString:location]) {
+					return YES;
+				}
+			}
+
+			// TODO(hugo): Filter out events that are currently recording
+
+			return NO;
+		}];
+
+		// Notification block
+		[_calendarSync setNotificationBlock:^(ICALComponent *comp) {
+			VMPInfo(@"Server Main: Notification block called with component %@", comp);
+		}];
 	}
 
 	return self;

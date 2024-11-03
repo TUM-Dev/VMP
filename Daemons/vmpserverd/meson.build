@@ -73,8 +73,7 @@ source = [
     'src/VMPRecordingManager.m',
     'src/VMPErrors.m',
     'src/VMPJournal.m',
-    'src/VMPCalEvent.m',
-    'src/VMPCalSync.m',
+    'src/VMPCalendarSync.m',
     'src/NSString+substituteVariables.m',
     'src/NSRunLoop+blockExecution.m',
     # Models

@@ -25,6 +25,13 @@
  */
 @property (nonatomic, readonly) NSDictionary *options;
 
+/**
+ * If this recording was scheduled by our calendar
+ * scheduling system, then this is the UID from the
+ * VEVENT.
+ */
+@property (nullable) NSString *associatedUID;
+
 @property (atomic, assign) BOOL eosReceived;
 
 + (instancetype)recorderWithLaunchArgs:(NSString *)launchArgs

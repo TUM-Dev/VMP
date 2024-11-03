@@ -1,4 +1,4 @@
-project('CalendarKit', 'objc', version : '0.1.0', default_options : ['warning_level=3'])
+project('CalendarKit', 'objc', version : '0.2.0', default_options : ['warning_level=3'])
 
 pkg = import('pkgconfig')
 

@@ -13,3 +13,23 @@ parsing = executable(
     include_directories: common_include_dirs
 )
 test('Parsing Test', parsing)
+
+time = executable(
+    'time',
+    ['time.m', 'main.m'],
+    objc_args: common_objc_args,
+    dependencies: common_dependencies,
+    link_with: common_link_with,
+    include_directories: common_include_dirs
+)
+test('Time Test', time)
+
+equality = executable(
+    'equality',
+    ['equality.m', 'main.m'],
+    objc_args: common_objc_args,
+    dependencies: common_dependencies,
+    link_with: common_link_with,
+    include_directories: common_include_dirs
+)
+test('Equality Test', equality)

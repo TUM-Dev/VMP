@@ -4,12 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#import <Foundation/NSData.h>
-#import <Foundation/NSEnumerator.h>
-#import <Foundation/NSError.h>
-#import <Foundation/NSObjCRuntime.h>
-#import <Foundation/NSObject.h>
-#import <Foundation/NSString.h>
+#import <Foundation/Foundation.h>
 
 // Class reference to avoid cyclic dependency
 @class ICALProperty;
@@ -68,6 +63,26 @@ typedef NS_ENUM(NSUInteger, ICALComponentKind) {
 - (NSString *_Nullable)uid;
 
 - (NSString *_Nullable)summary;
+
+- (NSString *_Nullable)location;
+
+/**
+ * @brief Converts 'dtstart' into a timezone-independent date
+ *
+ * Note that we convert the date into UTC from the local time zone.
+ * Be aware of any side-effects (e.g. you should not use this, if the event is recurring).
+ * Returns nil if timezone conversion fails.
+ */
+- (NSDate *_Nullable)startDate;
+
+/**
+ * @brief Converts 'dtend' into a timezone-independent date
+ *
+ * Note that we convert the date into UTC from the local time zone.
+ * Be aware of any side-effects (e.g. you should not use this, if the event is recurring).
+ * Returns nil if timezone conversion fails.
+ */
+- (NSDate *_Nullable)endDate;
 
 - (id)copyWithZone:(NSZone *)zone;
 

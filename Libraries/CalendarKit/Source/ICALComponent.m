@@ -4,14 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "libical/ical.h"
 #import <assert.h>
-#import <libical/icalcomponent.h>
-#import <libical/icalenums.h>
-#import <libical/icalerror.h>
-#import <libical/icalparser.h>
-
-#import <Foundation/NSException.h>
+#import <libical/ical.h>
 
 #import "CalendarKit/ICALComponent.h"
 #import "CalendarKit/ICALError.h"
@@ -23,6 +17,18 @@
 // so that we can just cast it.
 static_assert(ICAL_XPATCH_COMPONENT == ICALComponentKindXPATCH,
 			  "icalcomponent_kind enumeration is not in sync!");
+
+static NSDate *NSDateFromICalTime(struct icaltimetype time) {
+	icaltimezone *utcZone = icaltimezone_get_utc_timezone();
+	icaltimezone *localZone = (icaltimezone *) time.zone;
+	if (!time.zone) {
+		return nil;
+	}
+
+	icaltimezone_convert_time(&time, localZone, utcZone);
+	time_t secondsSinceUNIXEpoch = icaltime_as_timet(time);
+	return [NSDate dateWithTimeIntervalSince1970:secondsSinceUNIXEpoch];
+}
 
 @implementation ICALComponent (Private)
 
@@ -100,6 +106,25 @@ static_assert(ICAL_XPATCH_COMPONENT == ICALComponentKindXPATCH,
 	return [NSString stringWithUTF8String:summary];
 }
 
+- (NSString *_Nullable)location {
+	const char *location = icalcomponent_get_location(_handle);
+	if (!location) {
+		return nil;
+	}
+
+	return [NSString stringWithUTF8String:location];
+}
+
+- (NSDate *_Nullable)startDate {
+	struct icaltimetype time = icalcomponent_get_dtstart(_handle);
+	return NSDateFromICalTime(time);
+}
+
+- (NSDate *_Nullable)endDate {
+	struct icaltimetype time = icalcomponent_get_dtend(_handle);
+	return NSDateFromICalTime(time);
+}
+
 - (NSInteger)numberOfChildren {
 	return icalcomponent_count_components(_handle, ICAL_ANY_COMPONENT);
 }
@@ -134,6 +159,30 @@ static_assert(ICAL_XPATCH_COMPONENT == ICALComponentKindXPATCH,
 - (id)copyWithZone:(NSZone *)zone {
 	icalcomponent *cloned = icalcomponent_new_clone(_handle);
 	return [[ICALComponent alloc] initWithHandle:cloned];
+}
+
+- (BOOL)isEqual:(id)other {
+	if (self == other) {
+		return YES;
+	}
+
+	if ([other isKindOfClass:[ICALComponent class]]) {
+		ICALComponent *otherComponent = (ICALComponent *) other;
+
+		// Note that 'UID' MUST be specified in the "VEVENT", "VTODO",
+		// "VJOURNAL", or "VFREEBUSY" calendar components, but may
+		// be absent otherwise.
+		const char *selfUID = icalcomponent_get_uid(_handle);
+		const char *otherUID = icalcomponent_get_uid([otherComponent handle]);
+
+		if (selfUID != NULL && otherUID != NULL && (strcmp(selfUID, otherUID) == 0)) {
+			return YES;
+		}
+	}
+
+	// FIXME(hugo): Implement for other components as well.
+
+	return NO;
 }
 
 - (void)dealloc {
